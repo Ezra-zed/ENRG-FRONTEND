@@ -24,5 +24,9 @@ pnpm-debug.log*
 # Test / coverage output
 coverage/
 
+# TypeScript composite build output (lib/api-client-react)
+lib/api-client-react/src/*.d.ts
+lib/api-client-react/tsconfig.tsbuildinfo
+
 # Misc
 *.local

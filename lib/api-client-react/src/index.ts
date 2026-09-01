@@ -1,11 +1,16 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
+// ---------------------------------------------------------------------------
+// Shared contract types for the ENRG backend (http://localhost:5000).
+// The backend wraps every response as { success, data, message, error }.
+// ---------------------------------------------------------------------------
+
 export type SystemPreference = 'on-grid' | 'off-grid' | 'hybrid-grid';
 export type ProductCategory = 'solar-module' | 'inverter' | 'cable' | 'structure' | 'BOS';
 export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'other';
 export type SigninInputMethod = 'JWT-auth' | 'no-password' | 'O-auth';
 export type SignupInputRole = 'user' | 'install-co' | 'seller-co';
-export type LeadStatus = 'new' | 'accepted' | 'contacted' | 'site-visit' | 'quote-submitted' | 'won' | 'lost';
+export type LeadStatus = 'new' | 'accepted' | 'contacted' | 'site-visit' | 'quote-submitted' | 'won' | 'lost' | 'rejected';
 export type VerificationInputVerificationBadgesItem = 'Business Verified';
 
 export type Company = {
@@ -14,6 +19,9 @@ export type Company = {
   location?: string;
   projectsCompleted?: number;
   verificationBadges?: string[];
+  email?: string;
+  role?: string;
+  rating?: number;
 };
 
 export type Customer = {
@@ -25,6 +33,13 @@ export type Customer = {
   requiredSystemSize?: string;
 };
 
+export type LeadQuote = {
+  estimatedPrice?: number;
+  warrantyYears?: number;
+  notes?: string;
+  submittedAt?: string;
+};
+
 export type Lead = {
   id: string;
   customerName: string;
@@ -33,6 +48,7 @@ export type Lead = {
   systemSize?: string;
   monthlyBill?: number;
   status: LeadStatus;
+  quote?: LeadQuote | null;
 };
 
 export type Product = {
@@ -46,6 +62,10 @@ export type Product = {
   badge?: string;
 };
 
+// ---------------------------------------------------------------------------
+// Query-key helpers (kept stable so invalidations shared by the app keep working)
+// ---------------------------------------------------------------------------
+
 export const getGetHomeContentQueryKey = ({ type }: { type: SystemPreference }) => ['home-content', type];
 export const getListMarketplaceProductsQueryKey = (params: Record<string, unknown>) => ['marketplace-products', params];
 export const getListProjectQuotesQueryKey = (id: string) => ['project-quotes', id];
@@ -55,13 +75,184 @@ export const getListCompanyLeadsQueryKey = (params: Record<string, unknown>) => 
 export const getGetAdminDashboardQueryKey = () => ['admin-dashboard'];
 export const getGetAdminManagementQueryKey = () => ['admin-management'];
 
-const makeDelay = () => 350;
-const withLatency = <T>(value: T): Promise<T> => new Promise((resolve) => setTimeout(() => resolve(value), makeDelay()));
+// ---------------------------------------------------------------------------
+// HTTP plumbing — talks to the ENRG backend directly.
+// VITE_API_URL (default http://localhost:5000) configures the base host.
+// ---------------------------------------------------------------------------
 
-const fallbackHome = {
+const API_BASE_URL: string =
+  (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+
+const TOKEN_KEY = 'enrg_token';
+
+function getStoredToken(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function storeToken(token?: string | null): void {
+  if (typeof localStorage === 'undefined') return;
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+}
+
+type ApiEnvelope<T> = {
+  success: boolean;
+  data: T;
+  message?: string;
+  error?: unknown;
+};
+
+type RequestOptions = {
+  method?: string;
+  json?: unknown;      // JSON body — serialised & sent with Content-Type: application/json
+  formData?: FormData; // multipart/form-data body
+};
+
+/**
+ * Thin fetch wrapper around the backend's unified envelope:
+ *   { success: boolean, data: T, message: string, error: any }
+ * Throws an Error(message) on HTTP errors or `success: false` responses.
+ * A stored JWT is attached as `Authorization: Bearer <token>` automatically.
+ */
+async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+  const token = getStoredToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let body: BodyInit | undefined;
+  if (options.formData) {
+    body = options.formData;
+  } else if (options.json !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(options.json);
+  }
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method || 'GET',
+    headers,
+    body,
+  });
+
+  let envelope: ApiEnvelope<T> | null = null;
+  try {
+    envelope = (await res.json()) as ApiEnvelope<T>;
+  } catch {
+    envelope = null;
+  }
+
+  if (!res.ok || !envelope?.success) {
+    throw new Error(
+      envelope?.message || res.statusText || `Request failed (${res.status})`,
+    );
+  }
+
+  return envelope.data;
+}
+
+/** Serialise a plain object into multipart/form-data for upload routes. */
+function toFormData(data: Record<string, unknown>): FormData {
+  const fd = new FormData();
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined || value === null) continue;
+    if (value instanceof File || value instanceof Blob) {
+      fd.append(key, value);
+    } else if (typeof value === 'object') {
+      fd.append(key, JSON.stringify(value));
+    } else {
+      fd.append(key, String(value));
+    }
+  }
+  return fd;
+}
+
+/** Build a query string from known params, skipping empty values. */
+function toQueryString(params: Record<string, unknown>): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue;
+    qs.append(key, String(value));
+  }
+  const encoded = qs.toString();
+  return encoded ? `?${encoded}` : '';
+}
+
+// ---------------------------------------------------------------------------
+// Response normalisers — the backend ships wire shapes, the UI expects the
+// cleaner typed shapes below. Mapping happens here so components stay simple.
+// ---------------------------------------------------------------------------
+
+function normalizeProduct(raw: Record<string, any>): Product {
+  const specs = raw?.specs && typeof raw.specs === 'object' ? raw.specs : {};
+  const price = typeof raw?.price === 'number' ? raw.price : Number(raw?.price);
+  return {
+    id: (raw?.id ?? raw?._id)?.toString(),
+    name: raw?.name ?? 'Untitled product',
+    description:
+      typeof raw?.description === 'string'
+        ? raw.description
+        : typeof specs.description === 'string'
+          ? specs.description
+          : `A ${raw?.category ?? 'solar'} product built for dependable power.`,
+    category: raw?.category,
+    price: Number.isFinite(price) ? price : undefined,
+    unit: raw?.unit ?? specs.unit ?? 'unit',
+    imageUrl: raw?.imageUrl ?? specs.imageUrl ?? undefined,
+    badge: raw?.badge ?? specs.badge ?? undefined,
+  };
+}
+
+function toLead(raw: Record<string, any>): Lead {
+  const project = raw?.project && typeof raw.project === 'object' ? raw.project : {};
+  const customer = project.customer && typeof project.customer === 'object' ? project.customer : {};
+  const size = project.systemPreference
+    ? String(project.systemPreference).replaceAll('-', ' ')
+    : project.systemSize ?? undefined;
+  return {
+    id: (raw?.id ?? raw?._id)?.toString(),
+    customerName: customer.name ?? raw.customerName ?? 'Customer',
+    location: project.location ?? customer.location ?? 'Location pending',
+    createdAt: raw?.createdAt ?? project.createdAt ?? undefined,
+    systemSize: size ? `${size}` : undefined,
+    monthlyBill: typeof project.monthlyBill === 'number' ? project.monthlyBill : undefined,
+    status: raw?.status ?? 'new',
+    quote: raw?.quote ?? null,
+  };
+}
+
+function toCompany(raw: Record<string, any>): Company {
+  return {
+    id: (raw?.company?.id ?? raw?.id ?? raw?._id)?.toString(),
+    name: raw?.company?.name ?? raw?.name ?? 'Company',
+    location: raw?.serviceLocations?.[0] ?? raw?.location ?? raw?.company?.location ?? undefined,
+    projectsCompleted: typeof raw?.projectsCompleted === 'number' ? raw.projectsCompleted : undefined,
+    verificationBadges: raw?.verificationBadges ?? [],
+    email: raw?.company?.email ?? raw?.email,
+    role: raw?.company?.role ?? raw?.role,
+    rating: typeof raw?.rating === 'number' ? raw.rating : undefined,
+  };
+}
+// ---------------------------------------------------------------------------
+// Queries & mutations
+// ---------------------------------------------------------------------------
+
+/** Lightweight health probe — proves the frontend can reach the backend API. */
+export function useHealthCheck() {
+  return useQuery({
+    queryKey: ['health'],
+    queryFn: async () => {
+      await apiFetch<unknown>('/api/home?type=on-grid');
+      return { ok: true };
+    },
+    retry: 1,
+  });
+}
+
+const HOME_COPY = {
   'on-grid': {
     headline: 'Your rooftop, working smarter.',
-    description: 'See what fits your home, your habits, and the way power reaches you.',
+    description: 'Grid-connected solar that trims your monthly bill while the city grid keeps the lights on.',
     benefits: ['Lower monthly electricity costs', 'One clear path from choice to installation', 'Support from verified local companies'],
     recommendedSize: '2–4 kW',
     startingPrice: 145000,
@@ -82,61 +273,20 @@ const fallbackHome = {
   },
 } as const;
 
-const mockProducts: Product[] = [
-  { id: 'p1', name: 'Monocrystalline Rooftop Panel', description: 'High-output solar module for residential rooftops.', category: 'solar-module', price: 6800, unit: 'panel', badge: 'Best seller' },
-  { id: 'p2', name: 'Hybrid Solar Inverter', description: 'Smart inverter for grid-tied and backup use.', category: 'inverter', price: 54000, unit: 'unit' },
-  { id: 'p3', name: 'MC4 Solar Cable Kit', description: 'Weather-safe cable set for rooftop installation.', category: 'cable', price: 2200, unit: 'kit' },
-  { id: 'p4', name: 'Galvanized Roof Structure', description: 'Durable mounting structure designed for Indian rooftops.', category: 'structure', price: 16500, unit: 'set' },
-  { id: 'p5', name: 'Complete BOS Pack', description: 'Balance of system essentials for large commercial installs.', category: 'BOS', price: 31000, unit: 'pack' },
-  { id: 'p6', name: 'Battery Backup Module', description: 'Compact backup unit for hybrid energy systems.', category: 'inverter', price: 72000, unit: 'unit' },
-];
-
-const mockCompanyMetrics = {
-  totalLeads: 48,
-  activeLeads: 12,
-  quotesSubmitted: 16,
-  wonProjects: 7,
-  pipelineValue: 1250000,
-};
-
-const mockAdminDashboard = {
-  totalCustomers: 112,
-  totalCompanies: 34,
-  totalProjects: 68,
-  pendingVerifications: 5,
-  recentCompanies: [
-    { id: 'c1', name: 'Sunrise Solar Co.', location: 'Pune', projectsCompleted: 23, verificationBadges: ['Business Verified'] },
-    { id: 'c2', name: 'Mira Energy', location: 'Bengaluru', projectsCompleted: 17 },
-    { id: 'c3', name: 'GreenGrid Installations', location: 'Ahmedabad', projectsCompleted: 11, verificationBadges: ['Business Verified'] },
-  ],
-};
-
-const mockManagement = {
-  companies: [
-    { id: 'c1', name: 'Sunrise Solar Co.', location: 'Pune', projectsCompleted: 23, verificationBadges: ['Business Verified'] },
-    { id: 'c2', name: 'Mira Energy', location: 'Bengaluru', projectsCompleted: 17 },
-    { id: 'c3', name: 'GreenGrid Installations', location: 'Ahmedabad', projectsCompleted: 11, verificationBadges: ['Business Verified'] },
-  ],
-  customers: [
-    { id: 'u1', name: 'Aarav Sharma', mobile: '+91 98765 43210', location: 'Pune', monthlyBillAmount: 4200, requiredSystemSize: '3.5 kW' },
-    { id: 'u2', name: 'Neha Patel', mobile: '+91 98111 22334', location: 'Surat', monthlyBillAmount: 5100, requiredSystemSize: '5 kW' },
-  ],
-};
-
-const mockLeads: Lead[] = [
-  { id: 'l1', customerName: 'Aarav Sharma', location: 'Pune', createdAt: '2025-01-12T09:00:00.000Z', systemSize: '3.5 kW', monthlyBill: 4200, status: 'new' },
-  { id: 'l2', customerName: 'Meera Iyer', location: 'Bengaluru', createdAt: '2025-01-14T11:15:00.000Z', systemSize: '5 kW', monthlyBill: 5100, status: 'accepted' },
-  { id: 'l3', customerName: 'Rahul Singh', location: 'Jaipur', createdAt: '2025-01-18T16:40:00.000Z', systemSize: '2.2 kW', monthlyBill: 2600, status: 'contacted' },
-];
-
-export function useHealthCheck() {
-  return useQuery({ queryKey: ['health'], queryFn: () => withLatency({ ok: true }) });
-}
-
 export function useGetHomeContent({ type }: { type: SystemPreference }, options?: { query?: { queryKey?: unknown[] } }) {
   return useQuery({
     queryKey: options?.query?.queryKey ?? getGetHomeContentQueryKey({ type }),
-    queryFn: () => withLatency(fallbackHome[type]),
+    queryFn: async () => {
+      const data = await apiFetch<{ type: string; products: Record<string, any>[]; count: number }>(
+        `/api/home?type=${encodeURIComponent(type)}`,
+      );
+      return {
+        ...HOME_COPY[type],
+        type: data.type,
+        products: (data.products || []).map(normalizeProduct),
+        count: data.count ?? 0,
+      };
+    },
   });
 }
 
@@ -144,15 +294,27 @@ export function useListMarketplaceProducts(params: Record<string, unknown>, opti
   return useQuery({
     queryKey: options?.query?.queryKey ?? getListMarketplaceProductsQueryKey(params),
     queryFn: async () => {
-      const items = [...mockProducts].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-      return withLatency({ items });
+      const data = await apiFetch<{ items: Record<string, any>[]; pagination?: unknown }>(
+        `/api/marketplace${toQueryString(params)}`,
+      );
+      return {
+        ...data,
+        items: (data.items || []).map(normalizeProduct),
+      };
     },
   });
 }
 
 export function useRequestProjectQuote() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => withLatency({ id: `PRJ-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, ...data }),
+    mutationFn: async ({ data }: { data: any }) => {
+      const result = await apiFetch<{ project: { id: string } & Record<string, any>; distributedLeads?: number }>(
+        '/api/projects/request',
+        { method: 'POST', json: data },
+      );
+      // Return the project document so `onSuccess` receives `{ id, ... }`.
+      return result.project;
+    },
   });
 }
 
@@ -160,80 +322,192 @@ export function useListProjectQuotes(id: string, options?: { query?: { enabled?:
   return useQuery({
     queryKey: options?.query?.queryKey ?? getListProjectQuotesQueryKey(id),
     enabled: options?.query?.enabled ?? Boolean(id),
-    queryFn: () => withLatency([
-      { id: 'quote-1', companyName: 'Sunrise Solar Co.', estimatedPrice: 260000, warrantyYears: 8 },
-      { id: 'quote-2', companyName: 'GreenGrid Installations', estimatedPrice: 285000, warrantyYears: 10 },
-    ]),
+    queryFn: async () => {
+      const data = await apiFetch<{ projectId: string; quotes: Record<string, any>[]; count: number }>(
+        `/api/projects/${encodeURIComponent(id)}/quotes`,
+      );
+      return data.quotes ?? [];
+    },
   });
 }
 
 export function useRegisterCustomer() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => withLatency({ ok: true, ...data }),
+    mutationFn: async ({ data }: { data: any }) => {
+      const result = await apiFetch<{ customer: Record<string, any>; user: Record<string, any>; token?: string; userCreated?: boolean }>(
+        '/api/customers/register',
+        { method: 'POST', formData: toFormData(data) },
+      );
+      storeToken(result?.token);
+      return { ok: true, ...data, ...result };
+    },
   });
 }
-
 export function useSignup() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => withLatency({ user: { id: 'user-1', role: data.role ?? 'user', name: data.name, email: data.email } }),
+    mutationFn: async ({ data }: { data: any }) => {
+      const result = await apiFetch<{ user: Record<string, any>; token: string }>(
+        '/api/signup',
+        { method: 'POST', json: data },
+      );
+      storeToken(result?.token);
+      return result;
+    },
   });
 }
 
 export function useSignin() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => withLatency({ user: { id: 'user-1', role: data.email === 'admin@example.com' ? 'admin' : 'user', name: 'Demo User', email: data.email ?? 'demo@example.com' } }),
+    mutationFn: async ({ data }: { data: any }) => {
+      const result = await apiFetch<{ user: Record<string, any>; token: string }>(
+        '/api/signin',
+        { method: 'POST', json: data },
+      );
+      storeToken(result?.token);
+      return result;
+    },
   });
 }
 
 export function useCreateCompanyProfile() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => withLatency({ ok: true, ...data }),
+    mutationFn: async ({ data }: { data: any }) => {
+      return apiFetch<Record<string, any>>(
+        '/api/companies/profile',
+        { method: 'POST', formData: toFormData(data) },
+      );
+    },
   });
 }
 
 export function useUpdateCompanyLead() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => withLatency({ ok: true, ...data }),
+    mutationFn: async ({ data }: { data: any }) => {
+      const { leadId, ...body } = data || {};
+      return apiFetch<Record<string, any>>(
+        `/api/companies/leads/${encodeURIComponent(leadId)}`,
+        { method: 'PUT', json: body },
+      );
+    },
   });
 }
 
 export function useGetCompanyMetrics(options?: { query?: { queryKey?: unknown[] } }) {
   return useQuery({
     queryKey: options?.query?.queryKey ?? getGetCompanyMetricsQueryKey(),
-    queryFn: () => withLatency(mockCompanyMetrics),
+    queryFn: async () => {
+      const data = await apiFetch<{
+        funnel?: Array<{ label: string; value: number }>;
+        totals?: Record<string, number>;
+      }>('/api/companies/metrics');
+      const totals = data?.totals ?? {};
+      return {
+        totalLeads: totals.leads ?? 0,
+        activeLeads: totals.contacted ?? 0,
+        quotesSubmitted: totals.quotes ?? 0,
+        wonProjects: totals.projectsWon ?? 0,
+        pipelineValue: undefined, // not exposed by the current backend metrics endpoint
+        funnel: data?.funnel,
+        totals,
+      };
+    },
   });
 }
 
 export function useListCompanyLeads(params: Record<string, unknown>, options?: { query?: { queryKey?: unknown[] } }) {
   return useQuery({
     queryKey: options?.query?.queryKey ?? getListCompanyLeadsQueryKey(params),
-    queryFn: () => withLatency({ items: mockLeads }),
+    queryFn: async () => {
+      const data = await apiFetch<{ items: Record<string, any>[]; pagination?: unknown }>(
+        `/api/companies/leads${toQueryString(params)}`,
+      );
+      return {
+        ...data,
+        items: (data.items || []).map(toLead),
+      };
+    },
   });
 }
 
 export function useGetAdminDashboard(options?: { query?: { queryKey?: unknown[] } }) {
   return useQuery({
     queryKey: options?.query?.queryKey ?? getGetAdminDashboardQueryKey(),
-    queryFn: () => withLatency(mockAdminDashboard),
+    queryFn: async () => {
+      const dash = await apiFetch<{
+        totals: Record<string, number>;
+        meta?: Record<string, unknown>;
+      }>('/api/admin/dashboard');
+      const totals = dash?.totals ?? {};
+
+      // The dashboard endpoint has no "recent companies" list — pull the
+      // management list for that; tolerate it failing (token/permissions).
+      let recentCompanies: Company[] = [];
+      try {
+        const mgmt = await apiFetch<{ companies: Record<string, any>[] }>('/api/admin/management');
+        recentCompanies = (mgmt.companies || []).slice(0, 6).map(toCompany);
+      } catch {
+        recentCompanies = [];
+      }
+
+      return {
+        totalCustomers: totals.totalCustomers ?? 0,
+        totalCompanies: totals.totalCompanies ?? 0,
+        totalProjects: (totals.activeProjects ?? 0) + (totals.completedProjects ?? 0),
+        pendingVerifications: Math.max(0, (totals.totalCompanies ?? 0) - (totals.verifiedCompanies ?? 0)),
+        recentCompanies,
+      };
+    },
   });
 }
 
 export function useGetAdminManagement(options?: { query?: { queryKey?: unknown[] } }) {
   return useQuery({
     queryKey: options?.query?.queryKey ?? getGetAdminManagementQueryKey(),
-    queryFn: () => withLatency(mockManagement),
+    queryFn: async () => {
+      const data = await apiFetch<{
+        companies: Record<string, any>[];
+        complaints?: unknown[];
+        payments?: unknown[];
+      }>('/api/admin/management');
+      return {
+        ...data,
+        companies: (data.companies || []).map(toCompany),
+      };
+    },
   });
 }
 
 export function useListCustomers(params: Record<string, unknown>, options?: { query?: { queryKey?: unknown[] } }) {
   return useQuery({
     queryKey: options?.query?.queryKey ?? getListCustomersQueryKey(params),
-    queryFn: () => withLatency({ items: mockManagement.customers }),
+    queryFn: async () => {
+      const data = await apiFetch<{ items: Record<string, any>[]; total?: number }>(
+        `/api/customers${toQueryString(params)}`,
+      );
+      const items: Customer[] = (data.items || []).map((c) => ({
+        id: (c._id ?? c.id)?.toString(),
+        name: c.name ?? 'Unnamed customer',
+        mobile: c.mobile ?? '',
+        location: c.location ?? undefined,
+        monthlyBillAmount: typeof c.monthlyBillAmount === 'number' ? c.monthlyBillAmount : undefined,
+        requiredSystemSize: c.requiredSystemSize ?? undefined,
+      }));
+      return {
+        items,
+        total: data.total ?? items.length,
+      };
+    },
   });
 }
 
 export function useVerifyCompany() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => withLatency({ ok: true, ...data }),
+    mutationFn: async ({ data }: { data: any }) => {
+      const { companyId, verificationBadges } = data || {};
+      return apiFetch<Record<string, any>>(
+        `/api/admin/companies/${encodeURIComponent(companyId)}/verify`,
+        { method: 'PUT', json: { verificationBadges: verificationBadges ?? [] } },
+      );
+    },
   });
 }
