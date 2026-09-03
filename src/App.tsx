@@ -115,7 +115,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/admin/dashboard', label: 'Admin overview', icon: PanelLeft },
     { href: '/admin/management', label: 'Management', icon: Users },
   ];
-  return <div className="texture min-h-[100dvh] bg-background"><SolarVideoBackdrop />
+  return <div className="texture min-h-[100dvh] bg-background">{location === '/' && <SolarVideoBackdrop />}
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
       <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-5 lg:px-8">
         <div className="flex items-center gap-9"><Logo /><nav className="hidden items-center gap-6 md:flex">{nav.map(item => <Link key={item.href} href={item.href} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`} className={`text-sm font-semibold ${location === item.href ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}>{item.label}</Link>)}</nav></div>
