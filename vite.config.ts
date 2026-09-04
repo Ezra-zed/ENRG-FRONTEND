@@ -8,6 +8,7 @@ const base = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
   base,
+  envPrefix: ['VITE_', 'BACKEND_'],
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

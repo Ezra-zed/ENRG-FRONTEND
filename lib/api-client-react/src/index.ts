@@ -77,11 +77,11 @@ export const getGetAdminManagementQueryKey = () => ['admin-management'];
 
 // ---------------------------------------------------------------------------
 // HTTP plumbing — talks to the ENRG backend directly.
-// VITE_API_URL (default http://localhost:5000) configures the base host.
+// BACKEND_API_URL (default http://localhost:5000) configures the base host.
 // ---------------------------------------------------------------------------
 
 const API_BASE_URL: string =
-  (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+  (import.meta as any).env?.BACKEND_API_URL || 'http://localhost:5000';
 
 const TOKEN_KEY = 'enrg_token';
 
