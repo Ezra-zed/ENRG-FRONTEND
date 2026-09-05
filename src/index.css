@@ -257,3 +257,32 @@ header [data-testid="link-account"] { background: #276b50 !important; color: #ff
 .sarn-hero-readout strong { color: #276b50 !important; }
 .sarn-readout-label, .sarn-hero-readout span:last-of-type { color: #525252 !important; }
 .sarn-glow-button { background: linear-gradient(115deg, #ffd36b, #f0a020 55%, #e88916) !important; }
+
+.signin-modal-page { position: relative; display: grid; min-height: calc(100dvh - 72px); place-items: center; overflow: hidden; padding: 2rem 1.25rem; background: #d8e1dc; }
+.signin-modal-backdrop { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(25, 66, 49, .55), rgba(24, 37, 32, .78)), url("https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=1800&q=80") center/cover; filter: saturate(.72); }
+.signin-modal { position: relative; width: min(100%, 430px); border: 1px solid #292d2b; border-radius: 14px; background: #fff; padding: 2.25rem 2rem 1.6rem; box-shadow: 0 25px 70px rgba(14, 30, 22, .28); }
+.signin-modal-close { position: absolute; top: 1rem; right: 1rem; display: grid; width: 2.3rem; height: 2.3rem; place-items: center; border-radius: 50%; color: #3d4440; }
+.signin-modal-close:hover { background: #f0f3f0; color: #183d34; }
+.signin-modal-brand { display: flex; align-items: center; gap: .9rem; margin: 1.2rem 0 1.7rem; padding: 1rem; border-radius: 12px; background: #f2f1ef; }
+.signin-modal-mark { display: grid; width: 4.2rem; height: 4.2rem; flex: 0 0 auto; place-items: center; border-radius: 8px; background: #fff; color: #276b50; }
+.signin-google-button, .signin-email-button { display: flex; width: 100%; min-height: 50px; align-items: center; justify-content: center; gap: .8rem; border-radius: 999px; font-size: 1rem; font-weight: 700; }
+.signin-google-button { background: #2878df; color: #fff; }
+.signin-google-button:hover { background: #1767cc; box-shadow: 0 8px 18px rgba(40, 120, 223, .22); }
+.signin-google-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: #fff; color: #4285f4; font-family: Georgia, serif; font-size: 1.1rem; font-weight: 700; }
+.signin-email-button { margin-top: 1rem; border: 1px solid #303532; background: #fff; color: #424744; }
+.signin-email-button:hover { border-color: #276b50; color: #276b50; background: #f7faf5; }
+.signin-mail-icon { display: grid; place-items: center; }
+.signin-divider { display: flex; align-items: center; gap: .9rem; margin: 1.7rem 0 1.25rem; color: #333936; font-size: .95rem; }
+.signin-divider::before, .signin-divider::after { height: 1px; flex: 1; background: #e2e4e1; content: ''; }
+.signin-phone-link { display: block; width: 100%; color: #276b50; font-size: .85rem; font-weight: 700; text-align: center; }
+.signin-phone-link:hover { text-decoration: underline; }
+.signin-modal-join { margin-top: 1.5rem; color: #252a27; font-size: .95rem; text-align: center; }
+.signin-modal-join a { color: #1264bd; font-weight: 700; }
+.signin-modal-join a:hover { text-decoration: underline; }
+.signin-modal-privacy { display: flex; align-items: center; justify-content: center; gap: .35rem; margin-top: 1.25rem; color: #79817b; font-size: .72rem; }
+
+@media (max-width: 480px) {
+  .signin-modal-page { min-height: calc(100dvh - 72px); padding: 1rem; }
+  .signin-modal { padding: 2rem 1.2rem 1.3rem; }
+  .signin-modal-brand { margin-top: 1rem; }
+}
