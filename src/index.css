@@ -250,6 +250,8 @@ header { background: rgba(250, 250, 249, .96) !important; border-bottom: 1px sol
 header nav a, header [data-testid="link-signin"], header [data-testid="link-signup"] { color: #3f3f3f !important; }
 header nav a.text-accent { color: #276b50 !important; }
 header [data-testid="link-account"] { background: #276b50 !important; color: #fff !important; }
+.enrg-logo-mark { display: grid; width: 2.25rem; height: 2.25rem; overflow: hidden; place-items: center; border-radius: .75rem; background: #edffed; }
+.enrg-logo-mark img { width: 100%; height: 100%; object-fit: cover; }
 .sarn-hero-overlay { background: linear-gradient(90deg, rgba(0, 0, 0, .68) 0%, rgba(0, 0, 0, .5) 42%, rgba(0, 0, 0, .12) 100%), linear-gradient(0deg, rgba(0, 0, 0, .62), transparent 42%, rgba(0, 0, 0, .2)) !important; }
 .sarn-title { color: #fff !important; text-shadow: 0 2px 12px rgba(0, 0, 0, .4); }
 .sarn-title em { color: #f0a020 !important; }
@@ -265,6 +267,7 @@ header [data-testid="link-account"] { background: #276b50 !important; color: #ff
 .signin-modal-close:hover { background: #f0f3f0; color: #183d34; }
 .signin-modal-brand { display: flex; align-items: center; gap: .9rem; margin: 1.2rem 0 1.7rem; padding: 1rem; border-radius: 12px; background: #f2f1ef; }
 .signin-modal-mark { display: grid; width: 4.2rem; height: 4.2rem; flex: 0 0 auto; place-items: center; border-radius: 8px; background: #fff; color: #276b50; }
+.signin-modal-mark img { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
 .signin-google-button, .signin-email-button { display: flex; width: 100%; min-height: 50px; align-items: center; justify-content: center; gap: .8rem; border-radius: 999px; font-size: 1rem; font-weight: 700; }
 .signin-google-button { background: #2878df; color: #fff; }
 .signin-google-button:hover { background: #1767cc; box-shadow: 0 8px 18px rgba(40, 120, 223, .22); }
