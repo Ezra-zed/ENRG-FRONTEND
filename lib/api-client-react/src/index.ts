@@ -307,10 +307,10 @@ export function useListMarketplaceProducts(params: Record<string, unknown>, opti
 
 export function useRequestProjectQuote() {
   return useMutation({
-    mutationFn: async ({ data }: { data: any }) => {
+    mutationFn: async ({ formData }: { formData: FormData }) => {
       const result = await apiFetch<{ project: { id: string } & Record<string, any>; distributedLeads?: number }>(
         '/api/projects/request',
-        { method: 'POST', json: data },
+        { method: 'POST', formData },
       );
       // Return the project document so `onSuccess` receives `{ id, ... }`.
       return result.project;
