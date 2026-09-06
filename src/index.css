@@ -219,6 +219,9 @@ main [class*="rounded-3xl"], main [class*="rounded-[2rem]"] { border-radius: 8px
 main [class*="shadow-[var(--shadow-card)]"] { box-shadow: var(--shadow-card) !important; }
 main [class*="shadow-xl"], main [class*="shadow-2xl"] { box-shadow: 0 1px 2px rgba(0, 0, 0, .04) !important; }
 
+.company-assistant { position: relative; min-height: 180px; overflow: hidden; border-radius: 8px; padding: 1.75rem; background: #10241d; }
+.company-assistant-glow { position: absolute; top: -5rem; right: -3rem; width: 13rem; height: 13rem; border-radius: 50%; background: #2d956d; opacity: .35; filter: blur(42px); }
+
 .sarn-landing { --sarn-ink: #f7f7f5; --sarn-night: #f1f1ef; --sarn-cyan: #276b50; --sarn-gold: #b97808; --sarn-text: #3f3f3f; background: var(--sarn-ink) !important; color: var(--sarn-text) !important; }
 .sarn-hero { min-height: min(760px, calc(100svh - 72px)); }
 .sarn-hero-overlay { background: linear-gradient(90deg, rgba(20, 44, 32, .78), rgba(20, 44, 32, .45) 48%, rgba(20, 44, 32, .18)), linear-gradient(0deg, rgba(20, 44, 32, .62), transparent 38%, rgba(20, 44, 32, .18)) !important; }
