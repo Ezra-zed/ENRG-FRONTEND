@@ -43,6 +43,7 @@ export type LeadQuote = {
 export type Lead = {
   id: string;
   customerName: string;
+  customerPhone?: string;
   location: string;
   createdAt?: string;
   systemSize?: string;
@@ -68,11 +69,13 @@ export type Product = {
 
 export const getGetHomeContentQueryKey = ({ type }: { type: SystemPreference }) => ['home-content', type];
 export const getListMarketplaceProductsQueryKey = (params: Record<string, unknown>) => ['marketplace-products', params];
+export const getListCompaniesQueryKey = (params: Record<string, unknown>) => ['companies', params];
 export const getListProjectQuotesQueryKey = (id: string) => ['project-quotes', id];
 export const getListCustomersQueryKey = (params: Record<string, unknown>) => ['customers', params];
 export const getGetCompanyMetricsQueryKey = () => ['company-metrics'];
 export const getListCompanyLeadsQueryKey = (params: Record<string, unknown>) => ['company-leads', params];
 export const getGetAdminDashboardQueryKey = () => ['admin-dashboard'];
+export const getListAdminLeadsQueryKey = (params: Record<string, unknown>) => ['admin-leads', params];
 export const getGetAdminManagementQueryKey = () => ['admin-management'];
 
 // ---------------------------------------------------------------------------
@@ -212,6 +215,7 @@ function toLead(raw: Record<string, any>): Lead {
   return {
     id: (raw?.id ?? raw?._id)?.toString(),
     customerName: customer.name ?? raw.customerName ?? 'Customer',
+    customerPhone: customer.mobile ?? customer.phone ?? raw.customerPhone ?? raw.customerPhoneNumber ?? raw.phone ?? undefined,
     location: project.location ?? customer.location ?? 'Location pending',
     createdAt: raw?.createdAt ?? project.createdAt ?? undefined,
     systemSize: size ? `${size}` : undefined,
@@ -301,6 +305,19 @@ export function useListMarketplaceProducts(params: Record<string, unknown>, opti
         ...data,
         items: (data.items || []).map(normalizeProduct),
       };
+    },
+  });
+}
+
+export function useListCompanies(params: Record<string, unknown> = {}, options?: { query?: { queryKey?: unknown[] } }) {
+  return useQuery({
+    queryKey: options?.query?.queryKey ?? getListCompaniesQueryKey(params),
+    queryFn: async () => {
+      const data = await apiFetch<{ companies?: Record<string, any>[]; items?: Record<string, any>[] }>(
+        `/api/companies${toQueryString(params)}`,
+      );
+      const companies = data.companies ?? data.items ?? [];
+      return { companies: companies.map(toCompany) };
     },
   });
 }
@@ -456,6 +473,19 @@ export function useGetAdminDashboard(options?: { query?: { queryKey?: unknown[] 
         pendingVerifications: Math.max(0, (totals.totalCompanies ?? 0) - (totals.verifiedCompanies ?? 0)),
         recentCompanies,
       };
+    },
+  });
+}
+
+export function useListAdminLeads(params: Record<string, unknown>, options?: { query?: { queryKey?: unknown[] } }) {
+  return useQuery({
+    queryKey: options?.query?.queryKey ?? getListAdminLeadsQueryKey(params),
+    queryFn: async () => {
+      const data = await apiFetch<{ items?: Record<string, any>[]; leads?: Record<string, any>[]; total?: number }>(
+        `/api/admin/leads${toQueryString(params)}`,
+      );
+      const items = data.items ?? data.leads ?? [];
+      return { items: items.map(toLead), total: data.total ?? items.length };
     },
   });
 }
