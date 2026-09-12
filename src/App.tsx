@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { FcGoogle } from 'react-icons/fc';
 import { ArrowRight, BadgeCheck, BarChart3, Building2, Check, CircleDollarSign, ClipboardList, FileText, Home as HomeIcon, Loader2, LogIn, Menu, Package, PanelLeft, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Star, Sun, Upload, UserRound, Users, X, Zap } from 'lucide-react';
-import { getGetAdminDashboardQueryKey, getGetAdminManagementQueryKey, getGetCompanyMetricsQueryKey, getGetHomeContentQueryKey, getListCompaniesQueryKey, getListCompanyLeadsQueryKey, getListCustomersQueryKey, getListMarketplaceProductsQueryKey, getListProjectQuotesQueryKey, getListAdminLeadsQueryKey, useHealthCheck, useSignup, useSignin, useRegisterCustomer, useListCompanies, useListCustomers, useRequestProjectQuote, useListProjectQuotes, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useListMarketplaceProducts, useGetHomeContent, useVerifyCompany, useGetAdminDashboard, useGetAdminManagement, useListAdminLeads } from '@workspace/api-client-react';
+import { API_BASE_URL, getCurrentUser, getGetAdminDashboardQueryKey, getGetAdminManagementQueryKey, getGetCompanyMetricsQueryKey, getGetHomeContentQueryKey, getListCompaniesQueryKey, getListCompanyLeadsQueryKey, getListCustomersQueryKey, getListMarketplaceProductsQueryKey, getListProjectQuotesQueryKey, getListAdminLeadsQueryKey, logout as logoutRequest, useHealthCheck, useSignup, useSignin, useRegisterCustomer, useListCompanies, useListCustomers, useRequestProjectQuote, useListProjectQuotes, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useListMarketplaceProducts, useGetHomeContent, useVerifyCompany, useGetAdminDashboard, useGetAdminManagement, useListAdminLeads } from '@workspace/api-client-react';
 import { LeadStatus, ProductCategory, PropertyType, SigninInputMethod, SignupInputRole, SystemPreference, VerificationInputVerificationBadgesItem, type Company, type Lead, type Product } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -20,16 +20,68 @@ const date = (value?: string) =>
         year: 'numeric',
       })
     : '—';
-const getStoredUser = (): Record<string, any> | null => {
-  try {
-    const value = localStorage.getItem('enrg_user');
-    return value ? JSON.parse(value) : null;
-  } catch {
-    return null;
-  }
-};
 const getAccountPath = (user: Record<string, any> | null) => (user?.role === 'user' ? '/customer/dashboard' : user?.role === 'admin' ? '/admin/dashboard' : '/company/dashboard');
 const notifyAuthChanged = () => window.dispatchEvent(new Event('enrg-auth-changed'));
+type AuthContextValue = {
+  user: Record<string, any> | null;
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<Record<string, any> | null>;
+  signOut: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used inside AuthProvider');
+  return context;
+}
+
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<Record<string, any> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      return currentUser;
+    } catch {
+      setUser(null);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get('error');
+    const token = params.get('token') || params.get('access_token');
+    if (token) sessionStorage.setItem('enrg_token', token);
+    if (authError) setError(authError === 'access_denied' ? 'Google sign-in was cancelled. You can try again whenever you are ready.' : 'Google sign-in could not be completed. Please try again.');
+    if (authError || token) window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`);
+    const syncAuth = () => void refresh();
+    window.addEventListener('enrg-auth-changed', syncAuth);
+    window.addEventListener('storage', syncAuth);
+    refresh().finally(() => setLoading(false));
+    return () => {
+      window.removeEventListener('enrg-auth-changed', syncAuth);
+      window.removeEventListener('storage', syncAuth);
+    };
+  }, []);
+
+  const signOut = async () => {
+    try {
+      await logoutRequest();
+    } catch {
+    } finally {
+      setUser(null);
+    }
+  };
+
+  return <AuthContext.Provider value={{ user, loading, error, refresh, signOut }}>{children}</AuthContext.Provider>;
+}
 
 function Button({
   children,
@@ -139,22 +191,11 @@ function SolarVideoBackdrop() {
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<Record<string, any> | null>(() => getStoredUser());
+  const { user, signOut, error: authError } = useAuth();
   const [location, setLocation] = useLocation();
   useHealthCheck();
-  useEffect(() => {
-    const syncUser = () => setUser(getStoredUser());
-    window.addEventListener('enrg-auth-changed', syncUser);
-    window.addEventListener('storage', syncUser);
-    return () => {
-      window.removeEventListener('enrg-auth-changed', syncUser);
-      window.removeEventListener('storage', syncUser);
-    };
-  }, []);
-  const logout = () => {
-    localStorage.removeItem('enrg_user');
-    localStorage.removeItem('enrg_token');
-    setUser(null);
+  const logout = async () => {
+    await signOut();
     setOpen(false);
     setLocation('/');
   };
@@ -240,6 +281,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </header>
+      {authError && location !== '/signin' && (
+        <div className="mx-auto max-w-[1320px] px-5 pt-4 lg:px-8">
+          <p className="rounded-xl border border-[#e4b5aa] bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">{authError}</p>
+        </div>
+      )}
       <main>{children}</main>
       <footer className="border-t border-border bg-[#e7efe8]">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-8 px-5 py-10 sm:flex-row sm:items-end sm:justify-between lg:px-8">
@@ -849,7 +895,7 @@ function CompaniesPage() {
 function QuotePage() {
   const [location] = useLocation();
   const [, setLocation] = useLocation();
-  const user = getStoredUser();
+  const { user } = useAuth();
   const selectedCompany = new URLSearchParams(location.split('?')[1] || '');
   const companyId = selectedCompany.get('companyId') || '';
   const companyName = selectedCompany.get('companyName') || '';
@@ -881,7 +927,7 @@ function QuotePage() {
   const updateCurrentBill = (e: React.ChangeEvent<HTMLInputElement>) => setCurrentBill(e.target.files?.[0] || null);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!getStoredUser()) {
+    if (!user) {
       setLocation(`/signin?returnTo=${encodeURIComponent(location)}`);
       return;
     }
@@ -999,7 +1045,7 @@ function QuotePage() {
 }
 
 function CustomerDashboard() {
-  const user = getStoredUser();
+  const { user } = useAuth();
   const name = user?.name || 'there';
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-10 lg:px-8 lg:py-14">
@@ -1251,11 +1297,8 @@ function LegacySignin() {
         ? { method, email: form.email, password: form.password }
         : method === 'no-password'
           ? { method, phone: form.phone, otp: form.otp }
-          : {
-              method,
-              oauthProvider: 'google' as const,
-              oauthToken: 'google-browser-session',
-            };
+              : undefined;
+            if (!data) return;
     mutation.mutate(
       { data },
       {
@@ -1327,6 +1370,7 @@ function LegacySignin() {
 
 function Signin() {
   const mutation = useSignin();
+  const { error: authError, refresh } = useAuth();
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const [method, setMethod] = useState<SigninInputMethod>('O-auth');
@@ -1339,24 +1383,27 @@ function Signin() {
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (method === 'O-auth') {
+      window.location.assign(`${API_BASE_URL}/auth/google`);
+      return;
+    }
     const data =
       method === 'JWT-auth'
         ? { method, email: form.email, password: form.password }
         : method === 'no-password'
           ? { method, phone: form.phone, otp: form.otp }
-          : {
-              method,
-              oauthProvider: 'google' as const,
-              oauthToken: 'google-browser-session',
-            };
+          : undefined;
+    if (!data) return;
     mutation.mutate(
       { data },
       {
-        onSuccess: (session) => {
+        onSuccess: async (session) => {
           localStorage.setItem('enrg_user', JSON.stringify(session.user));
           notifyAuthChanged();
+          const currentUser = await refresh();
           const returnTo = new URLSearchParams(location.split('?')[1] || '').get('returnTo');
-          setLocation(returnTo || (session.user.role === 'user' ? '/customer/dashboard' : session.user.role === 'admin' ? '/admin/dashboard' : '/company/dashboard'));
+          const signedInUser = currentUser || session.user;
+          setLocation(returnTo || getAccountPath(signedInUser));
         },
       },
     );
@@ -1383,7 +1430,7 @@ function Signin() {
               <span className="signin-google-icon">
                 <FcGoogle size={20} />
               </span>
-              {mutation.isPending ? 'Signing you in...' : 'Continue with Google'}
+              Sign in with Google
             </button>
             <button type="button" data-testid="button-signin-email" onClick={() => setMethod('JWT-auth')} className="signin-email-button">
               <span className="signin-mail-icon">
@@ -1435,9 +1482,9 @@ function Signin() {
             </Button>
           </form>
         )}
-        {method === 'O-auth' && mutation.error && (
+        {method === 'O-auth' && (mutation.error || authError) && (
           <p data-testid="status-signin-error" className="mt-4 rounded-xl border border-[#e4b5aa] bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
-            Sign in was not completed. Please try again.
+            {authError || 'Sign in was not completed. Please try again.'}
           </p>
         )}
         <p className="signin-modal-join">
@@ -1455,6 +1502,7 @@ function Signin() {
 }
 
 function CompanyProfileSetup() {
+  const { user } = useAuth();
   const mutation = useCreateCompanyProfile();
   const [form, setForm] = useState({
     installExperienceYears: '',
@@ -1463,7 +1511,7 @@ function CompanyProfileSetup() {
     brands: '',
     pricingPackages: '',
   });
-  const profileStorageKey = `enrg_company_profile_${getStoredUser()?.id || 'current'}`;
+  const profileStorageKey = `enrg_company_profile_${user?.id || 'current'}`;
   useEffect(() => {
     try {
       const stored = localStorage.getItem(profileStorageKey);
@@ -1537,7 +1585,8 @@ function CompanyProfileSetup() {
 }
 
 function CompanyProfile() {
-  const profileStorageKey = `enrg_company_profile_${getStoredUser()?.id || 'current'}`;
+  const { user } = useAuth();
+  const profileStorageKey = `enrg_company_profile_${user?.id || 'current'}`;
   const [profile, setProfile] = useState<Record<string, string> | null>(null);
   const [, setLocation] = useLocation();
 
@@ -2172,6 +2221,25 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const [location] = useLocation();
+  if (loading) {
+    return <div className="grid min-h-[calc(100dvh-72px)] place-items-center text-sm text-muted-foreground">Checking your session…</div>;
+  }
+  if (!user) return <Redirect to={`/signin?returnTo=${encodeURIComponent(location)}`} />;
+  return <>{children}</>;
+}
+
+function DashboardRedirect() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (user) setLocation(getAccountPath(user));
+  }, [setLocation, user]);
+  return <div className="grid min-h-[calc(100dvh-72px)] place-items-center text-sm text-muted-foreground">Opening your dashboard…</div>;
+}
+
 function AppRouter() {
   return (
     <AppShell>
@@ -2179,18 +2247,19 @@ function AppRouter() {
         <Route path="/" component={LandingPage} />
         <Route path="/companies" component={CompaniesPage} />
         <Route path="/marketplace" component={Marketplace} />
-        <Route path="/quote" component={QuotePage} />
-        <Route path="/customer/dashboard" component={CustomerDashboard} />
+        <Route path="/quote" component={() => <ProtectedRoute><QuotePage /></ProtectedRoute>} />
+        <Route path="/customer/dashboard" component={() => <ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
         <Route path="/register" component={Register} />
         <Route path="/signup" component={Signup} />
         <Route path="/signin" component={Signin} />
-        <Route path="/company/profile/setup" component={CompanyProfileSetup} />
-        <Route path="/company/profile" component={CompanyProfile} />
-        <Route path="/company/leads" component={CompanyLeads} />
-        <Route path="/company/docs" component={CompanyDocs} />
-        <Route path="/company/dashboard" component={CompanyDashboard} />
-        <Route path="/admin/dashboard" component={AdminDashboard} />
-        <Route path="/admin/management" component={AdminManagement} />
+        <Route path="/dashboard" component={() => <ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+        <Route path="/company/profile/setup" component={() => <ProtectedRoute><CompanyProfileSetup /></ProtectedRoute>} />
+        <Route path="/company/profile" component={() => <ProtectedRoute><CompanyProfile /></ProtectedRoute>} />
+        <Route path="/company/leads" component={() => <ProtectedRoute><CompanyLeads /></ProtectedRoute>} />
+        <Route path="/company/docs" component={() => <ProtectedRoute><CompanyDocs /></ProtectedRoute>} />
+        <Route path="/company/dashboard" component={() => <ProtectedRoute><CompanyDashboard /></ProtectedRoute>} />
+        <Route path="/admin/dashboard" component={() => <ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/management" component={() => <ProtectedRoute><AdminManagement /></ProtectedRoute>} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
@@ -2210,9 +2279,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Router />
+          </WouterRouter>
+        </AuthProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

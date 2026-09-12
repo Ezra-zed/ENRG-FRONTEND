@@ -83,19 +83,22 @@ export const getGetAdminManagementQueryKey = () => ['admin-management'];
 // BACKEND_API_URL (default http://localhost:5000) configures the base host.
 // ---------------------------------------------------------------------------
 
-const API_BASE_URL: string =
+export const API_BASE_URL: string =
   (import.meta as any).env?.BACKEND_API_URL || 'http://localhost:5000';
 
 const TOKEN_KEY = 'enrg_token';
 
 function getStoredToken(): string | null {
-  if (typeof localStorage === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+  if (typeof sessionStorage !== 'undefined') {
+    const sessionToken = sessionStorage.getItem(TOKEN_KEY);
+    if (sessionToken) return sessionToken;
+  }
+  return typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
 }
 
 function storeToken(token?: string | null): void {
-  if (typeof localStorage === 'undefined') return;
-  if (token) localStorage.setItem(TOKEN_KEY, token);
+  if (typeof sessionStorage === 'undefined') return;
+  if (token) sessionStorage.setItem(TOKEN_KEY, token);
 }
 
 type ApiEnvelope<T> = {
@@ -136,6 +139,7 @@ async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<
     method: options.method || 'GET',
     headers,
     body,
+    credentials: 'include',
   });
 
   let envelope: ApiEnvelope<T> | null = null;
@@ -384,6 +388,20 @@ export function useSignin() {
       return result;
     },
   });
+}
+
+export async function getCurrentUser(): Promise<Record<string, any>> {
+  const result = await apiFetch<Record<string, any> | { user: Record<string, any> }>('/auth/me');
+  return result && 'user' in result && result.user ? result.user : result;
+}
+
+export async function logout(): Promise<void> {
+  await apiFetch('/auth/logout', { method: 'POST' });
+  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_KEY);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem('enrg_user');
+  }
 }
 
 export function useCreateCompanyProfile() {
