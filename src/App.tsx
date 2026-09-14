@@ -1254,8 +1254,8 @@ function Signup() {
             <div className="sm:col-span-2">
               <Field required label="Business name" placeholder="Your company" value={form.businessName} onChange={update('businessName')} data-testid="input-signup-business" />
             </div>
-            <Field label="GSTIN (optional)" placeholder="GST number" value={form.gstin} onChange={update('gstin')} data-testid="input-signup-gstin" />
-            <Field label="License number (optional)" placeholder="Registration number" value={form.licenseNumber} onChange={update('licenseNumber')} data-testid="input-signup-license" />
+            <Field required label="GSTIN" placeholder="GST number" value={form.gstin} onChange={update('gstin')} data-testid="input-signup-gstin" />
+            <Field required label="License number" placeholder="Registration number" value={form.licenseNumber} onChange={update('licenseNumber')} data-testid="input-signup-license" />
           </>
         )}
         <div className="sm:col-span-2">
