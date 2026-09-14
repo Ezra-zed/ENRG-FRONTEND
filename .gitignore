@@ -29,5 +29,9 @@ coverage/
 lib/api-client-react/src/*.d.ts
 lib/api-client-react/tsconfig.tsbuildinfo
 
+# Local AI context notes
+.context/
+
 # Misc
 *.local
+.img
