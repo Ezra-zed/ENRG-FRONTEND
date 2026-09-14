@@ -1267,20 +1267,24 @@ function Signup() {
           <Button type="submit" data-testid="button-submit-signup" disabled={mutation.isPending} className="w-full">
             {mutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Create my account
           </Button>
-          <div className="my-4 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <button
-            type="button"
-            data-testid="button-signup-google"
-            onClick={() => window.location.assign(`${API_BASE_URL}/auth/google`)}
-            className="flex w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 py-3 text-sm font-bold text-foreground transition hover:bg-secondary"
-          >
-            <FcGoogle size={20} />
-            Sign up with Google
-          </button>
+          {role === 'user' && (
+            <>
+              <div className="my-4 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                or
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <button
+                type="button"
+                data-testid="button-signup-google"
+                onClick={() => window.location.assign(`${API_BASE_URL}/auth/google`)}
+                className="flex w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 py-3 text-sm font-bold text-foreground transition hover:bg-secondary"
+              >
+                <FcGoogle size={20} />
+                Sign up with Google
+              </button>
+            </>
+          )}
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{' '}
             <Link href="/signin" data-testid="link-signup-signin" className="font-bold text-accent">
