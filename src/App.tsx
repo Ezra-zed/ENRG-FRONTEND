@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { FcGoogle } from 'react-icons/fc';
+import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { ArrowRight, BadgeCheck, BarChart3, Building2, Check, CircleDollarSign, ClipboardList, FileText, Home as HomeIcon, Loader2, LogIn, Menu, Package, PanelLeft, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Star, Sun, Upload, UserRound, Users, X, Zap } from 'lucide-react';
 import { API_BASE_URL, getCurrentUser, getGetAdminDashboardQueryKey, getGetAdminManagementQueryKey, getGetCompanyMetricsQueryKey, getGetHomeContentQueryKey, getListCompaniesQueryKey, getListCompanyLeadsQueryKey, getListCustomersQueryKey, getListMarketplaceProductsQueryKey, getListProjectQuotesQueryKey, getListAdminLeadsQueryKey, logout as logoutRequest, useHealthCheck, useSignup, useSignin, useRegisterCustomer, useListCompanies, useListCustomers, useRequestProjectQuote, useListProjectQuotes, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useListMarketplaceProducts, useGetHomeContent, useVerifyCompany, useGetAdminDashboard, useGetAdminManagement, useListAdminLeads } from '@workspace/api-client-react';
 import { LeadStatus, ProductCategory, PropertyType, SigninInputMethod, SignupInputRole, SystemPreference, VerificationInputVerificationBadgesItem, type Company, type Lead, type Product } from '@workspace/api-client-react';
@@ -281,16 +282,29 @@ function AppShell({ children }: { children: React.ReactNode }) {
             <Logo />
             <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">ENRG Solar Solution makes the move to clean energy clearer.</p>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-muted-foreground">
-            <Link href="/marketplace" data-testid="link-footer-marketplace">
-              Marketplace
-            </Link>
-            <Link href="/quote" data-testid="link-footer-quote">
-              Get a quote
-            </Link>
-            <Link href="/signup" data-testid="link-footer-company">
-              For companies
-            </Link>
+          <div className="flex flex-col gap-5 sm:items-end">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-muted-foreground">
+              <Link href="/marketplace" data-testid="link-footer-marketplace">
+                Marketplace
+              </Link>
+              <Link href="/quote" data-testid="link-footer-quote">
+                Get a quote
+              </Link>
+              <Link href="/signup" data-testid="link-footer-company">
+                For companies
+              </Link>
+            </div>
+            <nav aria-label="Social media" className="flex items-center gap-2">
+              <a href="https://www.instagram.com/enrg_solar_india" target="_blank" rel="noopener noreferrer" aria-label="ENRG Solar India on Instagram" title="Instagram" className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white">
+                <FaInstagram aria-hidden="true" size={18} />
+              </a>
+              <a href="https://www.facebook.com/share/1Ey5Aa7LFC/" target="_blank" rel="noopener noreferrer" aria-label="ENRG Solar India on Facebook" title="Facebook" className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white">
+                <FaFacebookF aria-hidden="true" size={16} />
+              </a>
+              <a href="https://www.linkedin.com/company/enrg-solar-india/" target="_blank" rel="noopener noreferrer" aria-label="ENRG Solar India on LinkedIn" title="LinkedIn" className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white">
+                <FaLinkedinIn aria-hidden="true" size={18} />
+              </a>
+            </nav>
           </div>
         </div>
       </footer>
