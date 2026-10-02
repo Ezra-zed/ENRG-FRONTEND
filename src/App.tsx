@@ -178,17 +178,6 @@ function Logo() {
   );
 }
 
-function SolarVideoBackdrop() {
-  return (
-    <div className="solar-video-backdrop" aria-hidden="true">
-      <video autoPlay muted loop playsInline poster="https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=1800&q=80">
-        <source src="/intro-vid-enrg.mp4" type="video/mp4" />
-      </video>
-      <div />
-    </div>
-  );
-}
-
 function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { user, signOut, error: authError } = useAuth();
@@ -219,7 +208,6 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const visibleNav = isCompany ? companyNav : user?.role === 'admin' ? adminNav : nav;
   return (
     <div className="texture min-h-[100dvh] bg-background">
-      {location === '/' && <SolarVideoBackdrop />}
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-5 lg:px-8">
           <div className="flex items-center gap-9">
@@ -475,34 +463,42 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
 }
 
 function CountUp({ value, suffix = '' }: { value: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
   const elementRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const element = elementRef.current;
     if (!element) return;
+    let frameId = 0;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          element.textContent = `${value.toLocaleString('en-IN')}${suffix}`;
+          observer.disconnect();
+          return;
+        }
         const started = performance.now();
+        let lastUpdate = started;
         const tick = (now: number) => {
           const progress = Math.min((now - started) / 1200, 1);
-          setCount(Math.round(value * (1 - Math.pow(1 - progress, 3))));
-          if (progress < 1) requestAnimationFrame(tick);
+          if (progress === 1 || now - lastUpdate >= 50) {
+            const count = Math.round(value * (1 - Math.pow(1 - progress, 3)));
+            element.textContent = `${count.toLocaleString('en-IN')}${suffix}`;
+            lastUpdate = now;
+          }
+          if (progress < 1) frameId = requestAnimationFrame(tick);
         };
-        requestAnimationFrame(tick);
+        frameId = requestAnimationFrame(tick);
         observer.disconnect();
       },
       { threshold: 0.6 },
     );
     observer.observe(element);
-    return () => observer.disconnect();
-  }, [value]);
-  return (
-    <span ref={elementRef}>
-      {count.toLocaleString('en-IN')}
-      {suffix}
-    </span>
-  );
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frameId);
+    };
+  }, [value, suffix]);
+  return <span ref={elementRef} className="sarn-count-up">0{suffix}</span>;
 }
 
 function LandingPage() {
@@ -529,8 +525,8 @@ function LandingPage() {
   return (
     <div className="sarn-landing">
       <section className="sarn-hero">
-        <video className="sarn-hero-video" autoPlay muted loop playsInline poster="https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=2200&q=85" aria-label="Solar panels in sunlight">
-          <source src="/intro-vid-enrg.mp4" type="video/mp4" />
+        <video className="sarn-hero-video" autoPlay muted loop playsInline poster="/intro-vid-enrg-poster.webp" aria-label="Solar panels in sunlight">
+          <source src="/intro-vid-enrg.mp4" type="video/mp4" media="(min-width: 761px) and (prefers-reduced-motion: no-preference)" />
         </video>
         <div className="sarn-hero-overlay" />
         <div className="sarn-hero-lines" />
