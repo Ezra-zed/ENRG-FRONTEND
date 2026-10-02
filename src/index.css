@@ -192,6 +192,7 @@ footer { background-color: rgba(12, 31, 19, .94) !important; color: #edf8ee; }
   .sarn-hero-description { font-size: .95rem; }
   .sarn-hero-readout { width: 180px; margin-top: 3rem; }
   .sarn-stats-inner { grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1.5rem 1.25rem; }
+  .sarn-stats-inner > .sarn-reveal:first-child { display: none; }
   .sarn-stat-label { display: none; }
   .sarn-stat { padding-left: .75rem; }
   .sarn-stat strong { font-size: 1.5rem; }
