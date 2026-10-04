@@ -882,26 +882,43 @@ function CompaniesPage() {
           </Link>
         }
       />
-      <div className="mb-8 grid gap-4 rounded-3xl border border-border bg-card p-4 sm:p-5">
-        <div className="flex flex-wrap gap-2">
-          <button data-testid="button-company-type-all" onClick={() => setType('all')} className={`rounded-full px-4 py-2.5 text-sm font-bold ${type === 'all' ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+      <div className="mb-6 grid gap-4 rounded-2xl border border-border bg-card p-3.5 shadow-[var(--shadow-card)] sm:p-4">
+        <div role="group" aria-label="Company type" className="inline-flex w-full max-w-full overflow-x-auto rounded-xl border border-border bg-secondary/60 p-1 sm:w-fit">
+          <button type="button" aria-pressed={type === 'all'} data-testid="button-company-type-all" onClick={() => setType('all')} className={`min-h-9 flex-1 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 sm:flex-none sm:px-4 sm:text-sm ${type === 'all' ? 'bg-card text-accent shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
             All companies
           </button>
-          <button data-testid="button-company-type-installer" onClick={() => setType('install-co')} className={`rounded-full px-4 py-2.5 text-sm font-bold ${type === 'install-co' ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+          <button type="button" aria-pressed={type === 'install-co'} data-testid="button-company-type-installer" onClick={() => setType('install-co')} className={`min-h-9 flex-1 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 sm:flex-none sm:px-4 sm:text-sm ${type === 'install-co' ? 'bg-card text-accent shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
             Installers
           </button>
-          <button data-testid="button-company-type-provider" onClick={() => setType('seller-co')} className={`rounded-full px-4 py-2.5 text-sm font-bold ${type === 'seller-co' ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+          <button type="button" aria-pressed={type === 'seller-co'} data-testid="button-company-type-provider" onClick={() => setType('seller-co')} className={`min-h-9 flex-1 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 sm:flex-none sm:px-4 sm:text-sm ${type === 'seller-co' ? 'bg-card text-accent shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
             Solar providers
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_auto]">
-        <label className="relative">
-          <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
-          <input data-testid="input-company-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name or city" className="h-10 w-full rounded-full border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-accent sm:w-64" />
-        </label>
-        <label className="relative"><MapPin className="absolute left-3 top-2.5 text-muted-foreground" size={16} /><input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} placeholder="Filter service location" className="h-10 w-full rounded-full border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-accent" aria-label="Filter by service location" /></label>
-        <SelectField label="Minimum rating" value={minRating} onChange={(event) => setMinRating(event.target.value)}><option value="">Any rating</option><option value="3">3+ stars</option><option value="4">4+ stars</option><option value="4.5">4.5+ stars</option></SelectField>
-        <label className="flex items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold"><input type="checkbox" checked={verifiedOnly} onChange={(event) => setVerifiedOnly(event.target.checked)} className="size-4 accent-primary" /> Verified only</label>
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.35fr)_minmax(190px,1.1fr)_minmax(155px,.85fr)_auto] lg:items-end">
+          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-foreground">
+            Search
+            <span className="relative block">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <input data-testid="input-company-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or city" aria-label="Search companies by name or city" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm font-normal outline-none placeholder:text-muted-foreground/80 focus:border-accent focus:ring-2 focus:ring-primary/20" />
+            </span>
+          </label>
+          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-foreground">
+            Service location
+            <span className="relative block">
+              <MapPin aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} placeholder="City or region" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm font-normal outline-none placeholder:text-muted-foreground/80 focus:border-accent focus:ring-2 focus:ring-primary/20" aria-label="Filter by service location" />
+            </span>
+          </label>
+          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-foreground">
+            Minimum rating
+            <select value={minRating} onChange={(event) => setMinRating(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm font-normal outline-none focus:border-accent focus:ring-2 focus:ring-primary/20">
+              <option value="">Any rating</option><option value="3">3+ stars</option><option value="4">4+ stars</option><option value="4.5">4.5+ stars</option>
+            </select>
+          </label>
+          <label className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground focus-within:border-accent focus-within:ring-2 focus-within:ring-primary/20 sm:col-span-2 lg:col-span-1">
+            <input type="checkbox" checked={verifiedOnly} onChange={(event) => setVerifiedOnly(event.target.checked)} className="size-4 shrink-0 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" />
+            Verified only
+          </label>
         </div>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">{query.isLoading ? 'Finding companies…' : `${companies.length} ${companies.length === 1 ? 'company' : 'companies'} found`}</p>
