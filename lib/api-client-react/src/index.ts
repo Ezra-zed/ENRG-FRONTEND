@@ -104,6 +104,34 @@ export type Product = {
   badge?: string;
 };
 
+export type ProjectQuote = {
+  id: string;
+  companyName?: string;
+  estimatedPrice: number;
+  status: string;
+  warrantyYears?: number;
+  notes?: string;
+  submittedAt?: string;
+};
+
+export type EnrgPayment = {
+  id: string;
+  amount: number; // smallest currency unit (paise for INR)
+  currency: string;
+  status: 'creating' | 'created' | 'pending' | 'authorized' | 'paid' | 'failed' | 'cancelled' | 'interrupted' | 'creation_failed' | string;
+  razorpayOrderId?: string | null;
+  razorpayPaymentId?: string | null;
+  projectId: string;
+  quoteId: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PaymentOrder = {
+  payment: EnrgPayment;
+  checkout: { keyId: string; orderId: string; amount?: number; currency?: string };
+};
+
 // ---------------------------------------------------------------------------
 // Query-key helpers (kept stable so invalidations shared by the app keep working)
 // ---------------------------------------------------------------------------
@@ -156,6 +184,7 @@ type RequestOptions = {
   json?: unknown;      // JSON body — serialised & sent with Content-Type: application/json
   formData?: FormData; // multipart/form-data body
   cache?: RequestCache;
+  headers?: Record<string, string>;
 };
 
 /**
@@ -167,6 +196,7 @@ type RequestOptions = {
 async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...options.headers,
   };
   const token = getStoredToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -415,12 +445,39 @@ export function useListProjectQuotes(id: string, options?: { query?: { enabled?:
     queryKey: options?.query?.queryKey ?? getListProjectQuotesQueryKey(id),
     enabled: options?.query?.enabled ?? Boolean(id),
     queryFn: async () => {
-      const data = await apiFetch<{ projectId: string; quotes: Record<string, any>[]; count: number }>(
+      const data = await apiFetch<{ projectId: string; quotes: ProjectQuote[]; count: number }>(
         `/api/projects/${encodeURIComponent(id)}/quotes`,
       );
       return data.quotes ?? [];
     },
   });
+}
+
+// Payment requests intentionally share this authenticated fetch layer with the
+// rest of the app so browser and future Expo clients use the same API contract.
+export async function createPaymentOrder(projectId: string, quoteId: string, idempotencyKey: string) {
+  return apiFetch<PaymentOrder>('/api/payments/orders', {
+    method: 'POST',
+    json: { projectId, quoteId },
+    headers: { 'Idempotency-Key': idempotencyKey },
+  });
+}
+
+export async function verifyPayment(input: {
+  paymentId: string;
+  orderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}) {
+  return apiFetch<{ payment: EnrgPayment }>('/api/payments/verify', { method: 'POST', json: input });
+}
+
+export async function cancelPayment(paymentId: string) {
+  return apiFetch<{ payment: EnrgPayment }>('/api/payments/cancel', { method: 'POST', json: { paymentId } });
+}
+
+export async function getPaymentStatus(paymentId: string) {
+  return apiFetch<{ payment: EnrgPayment }>(`/api/payments/${encodeURIComponent(paymentId)}`);
 }
 
 export function useRegisterCustomer() {

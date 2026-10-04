@@ -5,11 +5,21 @@ import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
 import { ArrowRight, CalendarDays, Check, CircleDollarSign, Clock3, Loader2, RefreshCw, Send, ShieldCheck, Upload, UserRound, Users } from 'lucide-react';
-import { getListCustomersQueryKey, getListProjectQuotesQueryKey, useRegisterCustomer, useRequestProjectQuote, useListProjectQuotes, useMyProjectTracking, PropertyType } from '@workspace/api-client-react';
+import { getListCustomersQueryKey, getListProjectQuotesQueryKey, useRegisterCustomer, useRequestProjectQuote, useListProjectQuotes, useMyProjectTracking, PropertyType, type CustomerProjectTracking } from '@workspace/api-client-react';
 import { SelectItem as DropdownItem } from '@/components/ui/select';
 import { Button, Field, SelectField } from '@/components/form-controls';
 import { QueryState, StatusPill } from '@/components/feedback';
 import { PageHeader } from '@/components/PageHeader';
+import { PaymentCheckout } from '@/components/payments/PaymentCheckout';
+
+function ProjectQuotesAndPayment({ project }: { project: CustomerProjectTracking }) {
+  const quotes = useListProjectQuotes(project.projectId);
+  if (quotes.isLoading) return <div className="mt-5 rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">Checking quote and payment options…</div>;
+  if (quotes.error) return <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm text-muted-foreground">We couldn’t load the latest quote details.</p><button type="button" onClick={() => void quotes.refetch()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold"><RefreshCw size={13} className={quotes.isFetching ? 'animate-spin' : ''} />Try again</button></div>;
+  const accepted = (quotes.data || []).filter((quote) => quote.status === 'accepted');
+  if (accepted.length === 0) return null;
+  return <div className="mt-6 border-t border-border pt-5"><h4 className="flex items-center gap-2 text-sm font-bold"><CircleDollarSign size={16} className="text-accent" />Accepted quote{accepted.length === 1 ? '' : 's'}</h4>{accepted.map((quote) => <PaymentCheckout key={quote.id} projectId={project.projectId} quote={quote} />)}</div>;
+}
 
 
 export function QuotePage() {
@@ -202,6 +212,7 @@ export function CustomerDashboard() {
           <div className="grid gap-4">{(projectsQuery.data?.items || []).map((project) => <article key={project.projectId} data-testid={`card-project-${project.projectId}`} className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><StatusPill status={project.status} /><span className="text-sm text-muted-foreground">{project.location || 'Location pending'} · {project.propertyType || 'Residential'}</span></div><h3 className="mt-3 font-display text-xl font-bold">{project.statusLabel}</h3><p className="mt-1 text-sm text-muted-foreground">Project reference {project.projectId}</p></div><div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:min-w-[300px]"><div><p className="text-xs text-muted-foreground">Vendor</p><p className="mt-1 font-semibold">{project.vendor?.name || 'Matching with companies'}</p></div><div><p className="text-xs text-muted-foreground">Expected completion</p><p className="mt-1 flex items-center gap-1 font-semibold"><CalendarDays size={14} />{project.expectedCompletionAt ? date(project.expectedCompletionAt) : 'Not scheduled'}</p></div></div></div>
             <div className="mt-6"><div className="mb-2 flex items-center justify-between text-xs font-semibold"><span>Project progress</span><span>{project.progressPercent}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.min(100, Math.max(0, project.progressPercent))}%` }} /></div></div>
+            <ProjectQuotesAndPayment project={project} />
             <div className="mt-6 border-t border-border pt-5"><h4 className="mb-4 flex items-center gap-2 text-sm font-bold"><Clock3 size={16} className="text-accent" />Timeline and updates</h4>{project.history?.length ? <ol className="grid gap-0">{[...project.history].reverse().map((event, index) => <li key={event.id || `${event.status}-${index}`} className="relative flex gap-3 pb-4 last:pb-0"><span className={`relative z-10 mt-1 grid size-5 shrink-0 place-items-center rounded-full ${index === 0 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>{index === 0 ? <Check size={12} /> : <span className="size-1.5 rounded-full bg-current" />}</span>{index < project.history.length - 1 && <span className="absolute left-[9px] top-6 h-[calc(100%-1rem)] w-px bg-border" />}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{event.statusLabel}</p><time className="text-xs text-muted-foreground">{date(event.createdAt)}</time></div>{event.message && <p className="mt-1 text-sm leading-5 text-muted-foreground">{event.message}</p>}{event.important && <span className="mt-2 inline-block rounded-full bg-[#fff0c9] px-2 py-1 text-[10px] font-bold text-[#765300]">Important update</span>}</div></li>)}</ol> : <p className="text-sm text-muted-foreground">Project created {date(project.createdAt)}. Updates will appear here.</p>}</div>
           </article>)}</div>
         </QueryState>
