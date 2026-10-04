@@ -2,10 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { FcGoogle } from 'react-icons/fc';
+import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { ArrowRight, BadgeCheck, BarChart3, Building2, Check, CircleDollarSign, ClipboardList, FileText, Home as HomeIcon, Loader2, LogIn, Menu, Package, PanelLeft, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Star, Sun, Upload, UserRound, Users, X, Zap } from 'lucide-react';
 import { API_BASE_URL, getCurrentUser, getGetAdminDashboardQueryKey, getGetAdminManagementQueryKey, getGetCompanyMetricsQueryKey, getGetHomeContentQueryKey, getListCompaniesQueryKey, getListCompanyLeadsQueryKey, getListCustomersQueryKey, getListMarketplaceProductsQueryKey, getListProjectQuotesQueryKey, getListAdminLeadsQueryKey, logout as logoutRequest, useHealthCheck, useSignup, useSignin, useRegisterCustomer, useListCompanies, useListCustomers, useRequestProjectQuote, useListProjectQuotes, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useListMarketplaceProducts, useGetHomeContent, useVerifyCompany, useGetAdminDashboard, useGetAdminManagement, useListAdminLeads } from '@workspace/api-client-react';
 import { LeadStatus, ProductCategory, PropertyType, SigninInputMethod, SignupInputRole, SystemPreference, VerificationInputVerificationBadgesItem, type Company, type Lead, type Product } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { SEO } from '@/components/SEO';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -287,25 +289,75 @@ function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <main>{children}</main>
-      <footer className="border-t border-border bg-[#e7efe8]">
-        <div className="mx-auto flex max-w-[1320px] flex-col gap-8 px-5 py-10 sm:flex-row sm:items-end sm:justify-between lg:px-8">
-          <div>
-            <Logo />
-            <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">ENRG Solar Solution makes the move to clean energy clearer.</p>
-          </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-muted-foreground">
-            <Link href="/marketplace" data-testid="link-footer-marketplace">
-              Marketplace
-            </Link>
-            <Link href="/quote" data-testid="link-footer-quote">
-              Get a quote
-            </Link>
-            <Link href="/signup" data-testid="link-footer-company">
-              For companies
-            </Link>
-          </div>
-        </div>
-      </footer>
+      ```tsx
+<footer className="border-t border-border bg-[#e7efe8]">
+  <div className="mx-auto flex max-w-[1320px] flex-col gap-8 px-5 py-10 sm:flex-row sm:items-end sm:justify-between lg:px-8">
+
+    {/* Company Information */}
+    <div>
+      <Logo />
+      <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">
+        ENRG Solar Solution makes the move to clean energy clearer.
+      </p>
+    </div>
+
+    {/* Footer Navigation */}
+    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-muted-foreground">
+      <Link href="/marketplace" data-testid="link-footer-marketplace">
+        Marketplace
+      </Link>
+
+      <Link href="/quote" data-testid="link-footer-quote">
+        Get a quote
+      </Link>
+
+      <Link href="/signup" data-testid="link-footer-company">
+        For companies
+      </Link>
+    </div>
+
+    {/* Social Media Links */}
+    <nav aria-label="Social media" className="flex items-center gap-2">
+
+      <a
+        href="https://www.instagram.com/enrg_solar_india"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="ENRG Solar India on Instagram"
+        title="Instagram"
+        className="flex size-10 items-center justify-center rounded-full border border-[#173b22]/20 text-[#173b22]/80 transition-colors hover:border-[#173b22]/50 hover:text-[#173b22]"
+      >
+        <FaInstagram aria-hidden="true" size={18} />
+      </a>
+
+      <a
+        href="https://www.facebook.com/share/1Ey5Aa7LFC/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="ENRG Solar India on Facebook"
+        title="Facebook"
+        className="flex size-10 items-center justify-center rounded-full border border-[#173b22]/20 text-[#173b22]/80 transition-colors hover:border-[#173b22]/50 hover:text-[#173b22]"
+      >
+        <FaFacebookF aria-hidden="true" size={16} />
+      </a>
+
+      <a
+        href="https://www.linkedin.com/company/enrg-solar-india/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="ENRG Solar India on LinkedIn"
+        title="LinkedIn"
+        className="flex size-10 items-center justify-center rounded-full border border-[#173b22]/20 text-[#173b22]/80 transition-colors hover:border-[#173b22]/50 hover:text-[#173b22]"
+      >
+        <FaLinkedinIn aria-hidden="true" size={18} />
+      </a>
+
+    </nav>
+
+  </div>
+</footer>
+```
+
     </div>
   );
 }
@@ -345,11 +397,11 @@ function Home() {
               Solar, made human
             </div>
             <h1 data-testid="text-home-headline" className="max-w-2xl font-display text-[clamp(3.25rem,7vw,6.8rem)] font-bold leading-[.92] tracking-[-.07em] text-[#183d34]">
-              Good energy
+              Solar energy
               <br />
               <span className="text-accent">starts here.</span>
             </h1>
-            <p className="mt-7 max-w-lg text-lg leading-8 text-[#46645a]">Compare the right system, connect with people who install it well, and make a confident switch to solar.</p>
+            <p className="mt-7 max-w-lg text-lg leading-8 text-[#46645a]">Compare solar systems, explore solar equipment, connect with solar companies, and find the right solar solution for your home.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/quote" data-testid="link-home-quote" className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground hover:-translate-y-0.5 hover:shadow-xl">
                 Tell us about your home <ArrowRight size={17} />
@@ -380,8 +432,8 @@ function Home() {
         <div className="grid gap-10 lg:grid-cols-[.75fr_1.25fr]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[.18em] text-accent">Start with what you know</p>
-            <h2 className="mt-3 max-w-sm font-display text-4xl font-bold leading-tight tracking-tight">Every home has a different kind of yes.</h2>
-            <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">Not sure what system type means? Choose a starting point and we’ll keep the rest clear.</p>
+            <h2 className="mt-3 max-w-sm font-display text-4xl font-bold leading-tight tracking-tight">Choose the right solar system for your home.</h2>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">Compare on-grid, off-grid, and hybrid solar systems to find an option that fits your home and energy needs.</p>
           </div>
           <div>
             <div className="grid gap-2 sm:grid-cols-3">
@@ -734,8 +786,8 @@ function Marketplace() {
     <div className="mx-auto max-w-[1320px] px-5 py-10 lg:px-8 lg:py-14">
       <PageHeader
         eyebrow="The marketplace"
-        title="Equipment with a reason to be here."
-        description="A considered range of solar essentials from brands and sellers ready to answer your questions."
+        title="Solar Equipment Marketplace."
+        description="Explore solar panels, inverters, cables, structures, and other solar equipment from brands and sellers."
         action={
           <Link href="/quote" data-testid="link-marketplace-quote" className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground">
             <FileText size={16} /> Need help choosing?
@@ -856,8 +908,8 @@ function CompaniesPage() {
     <div className="mx-auto max-w-[1320px] px-5 py-10 lg:px-8 lg:py-14">
       <PageHeader
         eyebrow="Find your solar team"
-        title="People who can put sunlight to work."
-        description="Compare trusted installers and solar providers by the signals that matter before you ask for a quote."
+        title="Solar Companies and Installers"
+        description="Find solar companies, installers, and solar providers for residential and commercial solar projects."
         action={
           <Link href="/quote" className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground">
             <FileText size={16} /> Tell us about your home
@@ -2259,25 +2311,143 @@ function DashboardRedirect() {
 }
 
 function AppRouter() {
+  const [location] = useLocation();
+
+  const seo = {
+    title: 'ENRG | Solar Made Human',
+    description:
+      'ENRG makes solar simpler. Compare solar equipment, find solar companies, and explore solutions for your home or business.',
+    path: '/',
+    noindex: false,
+  };
+
+  if (location === '/companies') {
+    seo.title = 'Solar Companies | ENRG';
+    seo.description =
+      'Find and compare solar installers and solar providers through ENRG.';
+    seo.path = '/companies';
+  } else if (location === '/marketplace') {
+    seo.title = 'Solar Equipment Marketplace | ENRG';
+    seo.description =
+      'Explore solar panels, inverters, cables, structures, and other solar equipment on the ENRG marketplace.';
+    seo.path = '/marketplace';
+  } else if (
+    location === '/register' ||
+    location === '/signup' ||
+    location === '/signin' ||
+    location === '/quote' ||
+    location === '/dashboard' ||
+    location.startsWith('/customer/') ||
+    location.startsWith('/company/') ||
+    location.startsWith('/admin/')
+  ) {
+    seo.title = 'ENRG';
+    seo.description = 'ENRG solar platform.';
+    seo.path = location;
+    seo.noindex = true;
+  } else if (location !== '/') {
+    seo.title = 'ENRG';
+    seo.description = 'ENRG solar platform.';
+    seo.path = location;
+    seo.noindex = true;
+  }
+
   return (
     <AppShell>
+      <SEO
+        title={seo.title}
+        description={seo.description}
+        path={seo.path}
+        noindex={seo.noindex}
+      />
+
       <Switch>
         <Route path="/" component={LandingPage} />
         <Route path="/companies" component={CompaniesPage} />
         <Route path="/marketplace" component={Marketplace} />
-        <Route path="/quote" component={() => <ProtectedRoute><QuotePage /></ProtectedRoute>} />
-        <Route path="/customer/dashboard" component={() => <ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
+        <Route
+          path="/quote"
+          component={() => (
+            <ProtectedRoute>
+              <QuotePage />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/customer/dashboard"
+          component={() => (
+            <ProtectedRoute>
+              <CustomerDashboard />
+            </ProtectedRoute>
+          )}
+        />
         <Route path="/register" component={Register} />
         <Route path="/signup" component={Signup} />
         <Route path="/signin" component={Signin} />
-        <Route path="/dashboard" component={() => <ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
-        <Route path="/company/profile/setup" component={() => <ProtectedRoute><CompanyProfileSetup /></ProtectedRoute>} />
-        <Route path="/company/profile" component={() => <ProtectedRoute><CompanyProfile /></ProtectedRoute>} />
-        <Route path="/company/leads" component={() => <ProtectedRoute><CompanyLeads /></ProtectedRoute>} />
-        <Route path="/company/docs" component={() => <ProtectedRoute><CompanyDocs /></ProtectedRoute>} />
-        <Route path="/company/dashboard" component={() => <ProtectedRoute><CompanyDashboard /></ProtectedRoute>} />
-        <Route path="/admin/dashboard" component={() => <ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/management" component={() => <ProtectedRoute><AdminManagement /></ProtectedRoute>} />
+        <Route
+          path="/dashboard"
+          component={() => (
+            <ProtectedRoute>
+              <DashboardRedirect />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/company/profile/setup"
+          component={() => (
+            <ProtectedRoute>
+              <CompanyProfileSetup />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/company/profile"
+          component={() => (
+            <ProtectedRoute>
+              <CompanyProfile />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/company/leads"
+          component={() => (
+            <ProtectedRoute>
+              <CompanyLeads />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/company/docs"
+          component={() => (
+            <ProtectedRoute>
+              <CompanyDocs />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/company/dashboard"
+          component={() => (
+            <ProtectedRoute>
+              <CompanyDashboard />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/admin/dashboard"
+          component={() => (
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/admin/management"
+          component={() => (
+            <ProtectedRoute>
+              <AdminManagement />
+            </ProtectedRoute>
+          )}
+        />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
