@@ -22,6 +22,47 @@ export type Company = {
   email?: string;
   role?: string;
   rating?: number;
+  verified?: boolean;
+  locations?: string[];
+  logo?: string | null;
+  type?: string;
+};
+
+export type SolarEstimateInput = {
+  propertyType: 'residential' | 'commercial';
+  location: string;
+  monthlyBillAmount?: number;
+  monthlyConsumptionKwh?: number;
+  solarCapacityKw?: number;
+  roofAreaSqFt?: number;
+  batteryRequired?: boolean;
+  backupHours?: number;
+};
+
+export type SolarEstimate = {
+  estimate: boolean;
+  finalVendorQuotation: boolean;
+  disclaimer: string;
+  recommendedCapacityKw: number;
+  panelCount: number;
+  assumptions: { panelWatts: number };
+  expectedGeneration: { dailyKwh: number; monthlyKwh: number; annualKwh: number };
+  estimatedSavings: { monthly: number; annual: number; currency: string };
+  estimatedPriceRange: { min: number; max: number; currency: string };
+  battery: { required: boolean; recommendedCapacityKwh: number; backupHours: number };
+};
+
+export type CustomerProjectTracking = {
+  projectId: string;
+  vendor: { id: string; name: string; type?: string } | null;
+  status: string;
+  statusLabel: string;
+  progressPercent: number;
+  expectedCompletionAt?: string | null;
+  history: Array<{ id?: string; status: string; statusLabel: string; message?: string | null; important: boolean; createdAt?: string }>;
+  location?: string;
+  propertyType?: string;
+  createdAt?: string;
 };
 
 export type Customer = {
@@ -71,6 +112,8 @@ export const getGetHomeContentQueryKey = ({ type }: { type: SystemPreference }) 
 export const getListMarketplaceProductsQueryKey = (params: Record<string, unknown>) => ['marketplace-products', params];
 export const getListCompaniesQueryKey = (params: Record<string, unknown>) => ['companies', params];
 export const getListProjectQuotesQueryKey = (id: string) => ['project-quotes', id];
+export const getPublicCompanyQueryKey = (id: string) => ['public-company', id];
+export const getMyProjectTrackingQueryKey = () => ['my-project-tracking'];
 export const getListCustomersQueryKey = (params: Record<string, unknown>) => ['customers', params];
 export const getGetCompanyMetricsQueryKey = () => ['company-metrics'];
 export const getListCompanyLeadsQueryKey = (params: Record<string, unknown>) => ['company-leads', params];
@@ -239,6 +282,10 @@ function toCompany(raw: Record<string, any>): Company {
     email: raw?.company?.email ?? raw?.email,
     role: raw?.company?.role ?? raw?.role,
     rating: typeof raw?.rating === 'number' ? raw.rating : undefined,
+    verified: Boolean(raw?.verified),
+    locations: Array.isArray(raw?.locations) ? raw.locations : undefined,
+    logo: raw?.logo ?? null,
+    type: raw?.type ?? raw?.role,
   };
 }
 // ---------------------------------------------------------------------------
@@ -323,6 +370,28 @@ export function useListCompanies(params: Record<string, unknown> = {}, options?:
       const companies = data.companies ?? data.items ?? [];
       return { companies: companies.map(toCompany) };
     },
+  });
+}
+
+export function useGetPublicCompany(id: string) {
+  return useQuery({
+    queryKey: getPublicCompanyQueryKey(id),
+    enabled: Boolean(id),
+    queryFn: () => apiFetch<Record<string, any>>(`/api/companies/${encodeURIComponent(id)}`),
+  });
+}
+
+export function useSolarEstimate() {
+  return useMutation({
+    mutationFn: ({ data }: { data: SolarEstimateInput }) =>
+      apiFetch<SolarEstimate>('/api/estimator/estimate', { method: 'POST', json: data }),
+  });
+}
+
+export function useMyProjectTracking() {
+  return useQuery({
+    queryKey: getMyProjectTrackingQueryKey(),
+    queryFn: () => apiFetch<{ items: CustomerProjectTracking[] }>('/api/projects/mine/tracking'),
   });
 }
 

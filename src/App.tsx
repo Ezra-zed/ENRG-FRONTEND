@@ -3,9 +3,9 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
-import { ArrowRight, BadgeCheck, BarChart3, Building2, Check, CircleDollarSign, ClipboardList, FileText, Home as HomeIcon, Loader2, LogIn, Menu, Package, PanelLeft, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Star, Sun, Upload, UserRound, Users, X, Zap } from 'lucide-react';
-import { API_BASE_URL, getCurrentUser, getGetAdminDashboardQueryKey, getGetAdminManagementQueryKey, getGetCompanyMetricsQueryKey, getGetHomeContentQueryKey, getListCompaniesQueryKey, getListCompanyLeadsQueryKey, getListCustomersQueryKey, getListMarketplaceProductsQueryKey, getListProjectQuotesQueryKey, getListAdminLeadsQueryKey, logout as logoutRequest, useHealthCheck, useSignup, useSignin, useRegisterCustomer, useListCompanies, useListCustomers, useRequestProjectQuote, useListProjectQuotes, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useListMarketplaceProducts, useGetHomeContent, useVerifyCompany, useGetAdminDashboard, useGetAdminManagement, useListAdminLeads } from '@workspace/api-client-react';
-import { LeadStatus, ProductCategory, PropertyType, SigninInputMethod, SignupInputRole, SystemPreference, VerificationInputVerificationBadgesItem, type Company, type Lead, type Product } from '@workspace/api-client-react';
+import { ArrowRight, BadgeCheck, BarChart3, BatteryCharging, Building2, CalendarDays, Check, CircleDollarSign, ClipboardList, Clock3, FileText, Home as HomeIcon, Loader2, LogIn, MapPin, Menu, Package, PanelLeft, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Star, Sun, TrendingDown, Upload, UserRound, Users, X, Zap } from 'lucide-react';
+import { API_BASE_URL, getCurrentUser, getGetAdminDashboardQueryKey, getGetAdminManagementQueryKey, getGetCompanyMetricsQueryKey, getGetHomeContentQueryKey, getListCompaniesQueryKey, getListCompanyLeadsQueryKey, getListCustomersQueryKey, getListMarketplaceProductsQueryKey, getListProjectQuotesQueryKey, getListAdminLeadsQueryKey, logout as logoutRequest, useHealthCheck, useSignup, useSignin, useRegisterCustomer, useListCompanies, useListCustomers, useRequestProjectQuote, useListProjectQuotes, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useListMarketplaceProducts, useGetHomeContent, useVerifyCompany, useGetAdminDashboard, useGetAdminManagement, useListAdminLeads, useGetPublicCompany, useSolarEstimate, useMyProjectTracking } from '@workspace/api-client-react';
+import { LeadStatus, ProductCategory, PropertyType, SigninInputMethod, SignupInputRole, SystemPreference, VerificationInputVerificationBadgesItem, type Company, type Lead, type Product, type SolarEstimateInput } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -192,6 +192,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const nav = [
     { href: '/', label: 'Home', icon: HomeIcon },
     { href: '/companies', label: 'Companies', icon: Building2 },
+    { href: '/estimator', label: 'Solar estimator', icon: Zap },
     { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
     { href: '/quote', label: 'Request a quote', icon: FileText },
   ];
@@ -830,26 +831,23 @@ function CompanyCard({ company }: { company: Company }) {
   return (
     <article data-testid={`card-company-${company.id}`} className="flex h-full flex-col rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-1">
       <div className="flex items-start justify-between gap-4">
-        <span className="grid size-12 place-items-center rounded-2xl bg-[#e2eee5] text-accent">
-          <Building2 size={22} />
-        </span>
-        {company.verificationBadges?.length ? <StatusPill status="verified" /> : null}
+        {company.logo ? <img src={company.logo} alt={`${company.name} logo`} className="size-12 rounded-2xl object-cover" /> : <span className="grid size-12 place-items-center rounded-2xl bg-[#e2eee5] text-accent"><Building2 size={22} /></span>}
+        {company.verified || company.verificationBadges?.length ? <span className="inline-flex items-center gap-1 rounded-full bg-[#dcefe4] px-2.5 py-1 text-[11px] font-bold text-[#21624b]"><BadgeCheck size={13} /> Verified</span> : null}
       </div>
       <p className="mt-6 text-[10px] font-bold uppercase tracking-[.16em] text-accent">{companyType}</p>
-      <h2 data-testid={`text-directory-company-${company.id}`} className="mt-2 font-display text-2xl font-bold">
-        {company.name}
-      </h2>
+      <h2 data-testid={`text-directory-company-${company.id}`} className="mt-2 font-display text-2xl font-bold"><Link href={`/companies/${company.id}`} data-testid={`link-company-detail-${company.id}`} className="hover:text-accent">{company.name}</Link></h2>
       <div className="mt-3 flex items-center gap-1 text-sm font-semibold">
         <Star size={15} className="fill-[#d49318] text-[#d49318]" />
         {company.rating ? company.rating.toFixed(1) : 'New'}
-        <span className="ml-1 font-normal text-muted-foreground">customer rating</span>
+        <span className="ml-1 font-normal text-muted-foreground">rating</span>
       </div>
       <p className="mt-4 min-h-12 text-sm leading-6 text-muted-foreground">
         {company.location || 'Serving your area'} · {company.projectsCompleted || 0} completed projects
       </p>
-      <Link href={`/quote?companyId=${encodeURIComponent(company.id)}&companyName=${encodeURIComponent(company.name)}`} data-testid={`link-company-quote-${company.id}`} className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
-        Send a quote request <ArrowRight size={16} />
-      </Link>
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-6">
+        <Link href={`/companies/${company.id}`} className="inline-flex items-center justify-center rounded-full border border-border px-3 py-3 text-sm font-bold hover:border-accent hover:text-accent">Details</Link>
+        <Link href={`/quote?companyId=${encodeURIComponent(company.id)}&companyName=${encodeURIComponent(company.name)}`} data-testid={`link-company-quote-${company.id}`} className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-3 py-3 text-sm font-bold text-accent-foreground">Get Quote <ArrowRight size={16} /></Link>
+      </div>
     </article>
   );
 }
@@ -857,11 +855,14 @@ function CompanyCard({ company }: { company: Company }) {
 function CompaniesPage() {
   const [type, setType] = useState<'all' | 'install-co' | 'seller-co'>('all');
   const [search, setSearch] = useState('');
-  const params = { page: 1, limit: 100 };
+  const [locationFilter, setLocationFilter] = useState('');
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [minRating, setMinRating] = useState('');
+  const params = { page: 1, limit: 100, ...(type !== 'all' ? { role: type } : {}), ...(search.trim() ? { search: search.trim() } : {}), ...(locationFilter.trim() ? { location: locationFilter.trim() } : {}), ...(verifiedOnly ? { verified: true } : {}), ...(minRating ? { minRating } : {}) };
   const query = useListCompanies(params, {
     query: { queryKey: getListCompaniesQueryKey(params) },
   });
-  const companies = (query.data?.companies || []).filter((company) => (type === 'all' || company.role === type) && `${company.name} ${company.location || ''}`.toLowerCase().includes(search.toLowerCase()));
+  const companies = query.data?.companies || [];
   return (
     <div className="mx-auto max-w-[1320px] px-5 py-10 lg:px-8 lg:py-14">
       <PageHeader
@@ -874,8 +875,8 @@ function CompaniesPage() {
           </Link>
         }
       />
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex gap-2 overflow-x-auto">
+      <div className="mb-8 grid gap-4 rounded-3xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-wrap gap-2">
           <button data-testid="button-company-type-all" onClick={() => setType('all')} className={`rounded-full px-4 py-2.5 text-sm font-bold ${type === 'all' ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
             All companies
           </button>
@@ -886,11 +887,17 @@ function CompaniesPage() {
             Solar providers
           </button>
         </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_auto]">
         <label className="relative">
           <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
           <input data-testid="input-company-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name or city" className="h-10 w-full rounded-full border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-accent sm:w-64" />
         </label>
+        <label className="relative"><MapPin className="absolute left-3 top-2.5 text-muted-foreground" size={16} /><input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} placeholder="Filter service location" className="h-10 w-full rounded-full border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-accent" aria-label="Filter by service location" /></label>
+        <SelectField label="Minimum rating" value={minRating} onChange={(event) => setMinRating(event.target.value)}><option value="">Any rating</option><option value="3">3+ stars</option><option value="4">4+ stars</option><option value="4.5">4.5+ stars</option></SelectField>
+        <label className="flex items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold"><input type="checkbox" checked={verifiedOnly} onChange={(event) => setVerifiedOnly(event.target.checked)} className="size-4 accent-primary" /> Verified only</label>
+        </div>
       </div>
+      <p className="mb-4 text-sm text-muted-foreground">{query.isLoading ? 'Finding companies…' : `${companies.length} ${companies.length === 1 ? 'company' : 'companies'} found`}</p>
       <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()} empty={!query.isLoading && !query.error && companies.length === 0} emptyText="No companies match that search.">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {companies.map((company) => (
@@ -900,6 +907,65 @@ function CompaniesPage() {
       </QueryState>
     </div>
   );
+}
+
+function CompanyDetailPage() {
+  const [location] = useLocation();
+  const companyId = location.split('?')[0].split('/').filter(Boolean).at(-1) || '';
+  const query = useGetPublicCompany(companyId);
+  const company = query.data as (Company & { ratingCount?: number; installExperienceYears?: number; products?: string[]; brands?: string[]; pricingPackages?: Array<Record<string, any>>; completedProjectPhotos?: string[] }) | undefined;
+  if (query.isLoading) return <div className="mx-auto max-w-5xl px-5 py-16"><QueryState loading><div /></QueryState></div>;
+  if (query.error || !company) return <div className="mx-auto max-w-5xl px-5 py-16"><QueryState error={query.error || new Error('Company not found')} onRetry={() => query.refetch()}><div /></QueryState></div>;
+  const quoteHref = `/quote?companyId=${encodeURIComponent(company.id)}&companyName=${encodeURIComponent(company.name)}`;
+  return <div className="mx-auto max-w-5xl px-5 py-10 lg:px-8 lg:py-14">
+    <Link href="/companies" className="text-sm font-bold text-accent">← All companies</Link>
+    <section className="mt-5 rounded-[2rem] border border-border bg-card p-6 shadow-[var(--shadow-card)] sm:p-10">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-4">{company.logo ? <img src={company.logo} alt={`${company.name} logo`} className="size-16 rounded-2xl object-cover" /> : <span className="grid size-16 place-items-center rounded-2xl bg-[#e2eee5] text-accent"><Building2 size={28} /></span>}<div><p className="text-xs font-bold uppercase tracking-widest text-accent">{company.role === 'install-co' ? 'Solar installer' : 'Solar provider'}</p><h1 className="mt-1 font-display text-3xl font-bold sm:text-4xl">{company.name}</h1><div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">{(company.locations || []).length > 0 && <span className="flex items-center gap-1"><MapPin size={15} />{company.locations?.join(' · ')}</span>}<span className="flex items-center gap-1"><Star size={15} className="fill-[#d49318] text-[#d49318]" />{company.rating ? company.rating.toFixed(1) : 'New'}{company.ratingCount ? ` (${company.ratingCount} ratings)` : ''}</span></div></div></div>
+        <div className="flex flex-wrap items-center gap-2">{company.verified || company.verificationBadges?.length ? <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dcefe4] px-3 py-2 text-sm font-bold text-[#21624b]"><BadgeCheck size={16} /> Business verified</span> : <span className="rounded-full bg-secondary px-3 py-2 text-sm font-semibold text-muted-foreground">Verification pending</span>}</div>
+      </div>
+      <div className="mt-8 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl bg-secondary/70 p-4"><p className="text-xs text-muted-foreground">Experience</p><p className="mt-1 font-display text-xl font-bold">{company.installExperienceYears || '—'}{company.installExperienceYears ? ' years' : ''}</p></div><div className="rounded-2xl bg-secondary/70 p-4"><p className="text-xs text-muted-foreground">Customer rating</p><p className="mt-1 font-display text-xl font-bold">{company.rating ? `${company.rating.toFixed(1)} / 5` : 'Not rated yet'}</p></div><div className="rounded-2xl bg-secondary/70 p-4"><p className="text-xs text-muted-foreground">Service locations</p><p className="mt-1 font-display text-xl font-bold">{company.locations?.length || 0}</p></div></div>
+      {!!company.products?.length && <div className="mt-8"><h2 className="font-display text-xl font-bold">Services and products</h2><div className="mt-3 flex flex-wrap gap-2">{company.products.map((item) => <span key={item} className="rounded-full bg-secondary px-3 py-2 text-sm font-medium">{item}</span>)}</div></div>}
+      {!!company.brands?.length && <div className="mt-7"><h2 className="font-display text-xl font-bold">Brands</h2><div className="mt-3 flex flex-wrap gap-2">{company.brands.map((item) => <span key={item} className="rounded-full border border-border px-3 py-2 text-sm">{item}</span>)}</div></div>}
+      {!!company.pricingPackages?.length && <div className="mt-7"><h2 className="font-display text-xl font-bold">Packages</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{company.pricingPackages.map((pkg, i) => <article key={pkg.name || i} className="rounded-2xl border border-border p-4"><h3 className="font-bold">{pkg.name || `Package ${i + 1}`}</h3>{pkg.systemSize && <p className="mt-1 text-sm text-muted-foreground">{pkg.systemSize}</p>}{pkg.price && <p className="mt-2 font-display text-xl font-bold">{money(Number(pkg.price))}</p>}{pkg.description && <p className="mt-2 text-sm leading-6 text-muted-foreground">{pkg.description}</p>}</article>)}</div></div>}
+      {!!company.completedProjectPhotos?.length && <div className="mt-7"><h2 className="font-display text-xl font-bold">Recent work</h2><div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">{company.completedProjectPhotos.map((photo, i) => <img key={photo} src={photo} alt={`${company.name} completed solar project ${i + 1}`} className="aspect-[4/3] w-full rounded-2xl object-cover" loading="lazy" />)}</div></div>}
+      <Link href={quoteHref} className="mt-9 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground sm:w-auto">Get Quote <ArrowRight size={16} /></Link>
+    </section>
+  </div>;
+}
+
+function EnergyEstimatorPage() {
+  const estimateMutation = useSolarEstimate();
+  const [form, setForm] = useState({ propertyType: 'residential' as 'residential' | 'commercial', location: '', monthlyBillAmount: '', monthlyConsumptionKwh: '', roofAreaSqFt: '', batteryRequired: false, backupHours: '4' });
+  const [estimate, setEstimate] = useState<ReturnType<typeof useSolarEstimate>['data']>(undefined);
+  const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setEstimate(undefined);
+    const data: SolarEstimateInput = { propertyType: form.propertyType, location: form.location.trim(), ...(form.monthlyBillAmount ? { monthlyBillAmount: Number(form.monthlyBillAmount) } : {}), ...(form.monthlyConsumptionKwh ? { monthlyConsumptionKwh: Number(form.monthlyConsumptionKwh) } : {}), ...(form.roofAreaSqFt ? { roofAreaSqFt: Number(form.roofAreaSqFt) } : {}), batteryRequired: form.batteryRequired, backupHours: form.batteryRequired ? Number(form.backupHours) : 0 };
+    estimateMutation.mutate({ data }, { onSuccess: setEstimate });
+  };
+  return <div className="mx-auto max-w-[1180px] px-5 py-10 lg:px-8 lg:py-14">
+    <PageHeader eyebrow="Energy intelligent estimator" title="A useful first look at solar." description="Estimate a system size, energy generation, savings, and an installed price range from your energy use and location." />
+    <div className="grid items-start gap-6 lg:grid-cols-[.9fr_1.1fr]">
+      <form onSubmit={submit} className="grid gap-4 rounded-[2rem] border border-border bg-card p-6 shadow-[var(--shadow-card)] sm:p-8">
+        <div><h2 className="font-display text-2xl font-bold">Your energy profile</h2><p className="mt-1 text-sm text-muted-foreground">Share your monthly bill or usage to calculate a planning estimate.</p></div>
+        <SelectField label="Property type" value={form.propertyType} onChange={update('propertyType')}><option value="residential">Residential</option><option value="commercial">Commercial</option></SelectField>
+        <Field required label="City or location" placeholder="Pune, Maharashtra" value={form.location} onChange={update('location')} />
+        <div className="grid gap-4 sm:grid-cols-2"><Field type="number" min="1" label="Monthly electricity bill (₹)" placeholder="4500" value={form.monthlyBillAmount} onChange={update('monthlyBillAmount')} /><Field type="number" min="1" label="Monthly use (kWh, optional)" placeholder="600" value={form.monthlyConsumptionKwh} onChange={update('monthlyConsumptionKwh')} /></div>
+        <Field type="number" min="1" label="Available roof area (sq ft, optional)" placeholder="500" value={form.roofAreaSqFt} onChange={update('roofAreaSqFt')} />
+        <label className="flex items-center gap-3 rounded-2xl bg-secondary/70 p-4 text-sm font-semibold"><input type="checkbox" checked={form.batteryRequired} onChange={(event) => setForm((current) => ({ ...current, batteryRequired: event.target.checked }))} className="size-4 accent-primary" /><BatteryCharging size={18} className="text-accent" />Include battery backup</label>
+        {form.batteryRequired && <SelectField label="Backup duration" value={form.backupHours} onChange={update('backupHours')}><option value="2">2 hours</option><option value="4">4 hours</option><option value="6">6 hours</option><option value="8">8 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></SelectField>}
+        {estimateMutation.error && <p role="alert" className="rounded-xl bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">{(estimateMutation.error as Error).message || 'We could not calculate an estimate. Check your inputs and try again.'}</p>}
+        <Button type="submit" disabled={estimateMutation.isPending || (!form.monthlyBillAmount && !form.monthlyConsumptionKwh)}>{estimateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}Calculate estimate</Button>
+      </form>
+      {estimate ? <section className="rounded-[2rem] bg-[#173b22] p-6 text-white shadow-[var(--shadow-card)] sm:p-8" aria-live="polite">
+        <p className="text-xs font-bold uppercase tracking-[.16em] text-[#9ed3a8]">Your planning estimate</p><h2 className="mt-2 font-display text-3xl font-bold">{estimate.recommendedCapacityKw} kW solar</h2><p className="mt-1 text-sm text-white/65">About {estimate.panelCount} panels at {estimate.assumptions.panelWatts} W each</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white/10 p-4"><p className="flex items-center gap-2 text-sm text-white/70"><CircleDollarSign size={16} />Estimated system price</p><p className="mt-2 font-display text-xl font-bold">{money(estimate.estimatedPriceRange.min)}–{money(estimate.estimatedPriceRange.max)}</p></div><div className="rounded-2xl bg-white/10 p-4"><p className="flex items-center gap-2 text-sm text-white/70"><TrendingDown size={16} />Estimated monthly savings</p><p className="mt-2 font-display text-xl font-bold">{money(estimate.estimatedSavings.monthly)}</p><p className="mt-1 text-xs text-white/60">Around {money(estimate.estimatedSavings.annual)} per year</p></div><div className="rounded-2xl bg-white/10 p-4"><p className="flex items-center gap-2 text-sm text-white/70"><Sun size={16} />Monthly generation</p><p className="mt-2 font-display text-xl font-bold">{estimate.expectedGeneration.monthlyKwh.toLocaleString('en-IN')} kWh</p><p className="mt-1 text-xs text-white/60">{estimate.expectedGeneration.annualKwh.toLocaleString('en-IN')} kWh per year</p></div><div className="rounded-2xl bg-white/10 p-4"><p className="flex items-center gap-2 text-sm text-white/70"><BatteryCharging size={16} />Battery backup</p><p className="mt-2 font-display text-xl font-bold">{estimate.battery.required ? `${estimate.battery.recommendedCapacityKwh} kWh` : 'Not included'}</p></div></div>
+        <p className="mt-5 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm leading-6 text-white/75">{estimate.disclaimer}</p><Link href="/companies" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#b5e6bd]">Compare solar companies <ArrowRight size={16} /></Link>
+      </section> : <section className="grid min-h-64 place-items-center rounded-[2rem] border border-dashed border-border bg-card/60 p-8 text-center"><div><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#e2eee5] text-accent"><Zap size={24} /></span><h2 className="mt-4 font-display text-xl font-bold">Your estimate will appear here</h2><p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">Enter your monthly energy use and location to see estimated capacity, savings, and pricing.</p></div></section>}
+    </div>
+  </div>;
 }
 
 function QuotePage() {
@@ -950,7 +1016,6 @@ function QuotePage() {
     if (form.systemPreference) formData.append('systemPreference', form.systemPreference);
     if (form.budget) formData.append('budget', String(form.budget));
     if (currentBill) formData.append('currentBill', currentBill, currentBill.name);
-    console.log(Array.from(formData.entries()));
     mutation.mutate({ formData }, { onSuccess: (project) => setDone(project) });
   };
   if (!user) return null;
@@ -1056,6 +1121,7 @@ function QuotePage() {
 
 function CustomerDashboard() {
   const { user } = useAuth();
+  const projectsQuery = useMyProjectTracking();
   const name = user?.name || 'there';
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-10 lg:px-8 lg:py-14">
@@ -1087,6 +1153,16 @@ function CustomerDashboard() {
           </Link>
         </section>
       </div>
+      <section className="mt-10">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-widest text-accent">Project tracker</p><h2 className="mt-2 font-display text-2xl font-bold">Your solar projects</h2></div><div className="flex items-center gap-4"><button type="button" onClick={() => projectsQuery.refetch()} disabled={projectsQuery.isFetching} className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-accent"><RefreshCw size={14} className={projectsQuery.isFetching ? 'animate-spin' : ''} />Refresh updates</button><Link href="/quote" className="text-sm font-bold text-accent">Start another project <ArrowRight size={15} className="ml-1 inline" /></Link></div></div>
+        <QueryState loading={projectsQuery.isLoading} error={projectsQuery.error} onRetry={() => projectsQuery.refetch()} empty={!projectsQuery.isLoading && !projectsQuery.error && (projectsQuery.data?.items || []).length === 0} emptyText="Your project updates will appear here.">
+          <div className="grid gap-4">{(projectsQuery.data?.items || []).map((project) => <article key={project.projectId} data-testid={`card-project-${project.projectId}`} className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><StatusPill status={project.status} /><span className="text-sm text-muted-foreground">{project.location || 'Location pending'} · {project.propertyType || 'Residential'}</span></div><h3 className="mt-3 font-display text-xl font-bold">{project.statusLabel}</h3><p className="mt-1 text-sm text-muted-foreground">Project reference {project.projectId}</p></div><div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:min-w-[300px]"><div><p className="text-xs text-muted-foreground">Vendor</p><p className="mt-1 font-semibold">{project.vendor?.name || 'Matching with companies'}</p></div><div><p className="text-xs text-muted-foreground">Expected completion</p><p className="mt-1 flex items-center gap-1 font-semibold"><CalendarDays size={14} />{project.expectedCompletionAt ? date(project.expectedCompletionAt) : 'Not scheduled'}</p></div></div></div>
+            <div className="mt-6"><div className="mb-2 flex items-center justify-between text-xs font-semibold"><span>Project progress</span><span>{project.progressPercent}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.min(100, Math.max(0, project.progressPercent))}%` }} /></div></div>
+            <div className="mt-6 border-t border-border pt-5"><h4 className="mb-4 flex items-center gap-2 text-sm font-bold"><Clock3 size={16} className="text-accent" />Timeline and updates</h4>{project.history?.length ? <ol className="grid gap-0">{[...project.history].reverse().map((event, index) => <li key={event.id || `${event.status}-${index}`} className="relative flex gap-3 pb-4 last:pb-0"><span className={`relative z-10 mt-1 grid size-5 shrink-0 place-items-center rounded-full ${index === 0 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>{index === 0 ? <Check size={12} /> : <span className="size-1.5 rounded-full bg-current" />}</span>{index < project.history.length - 1 && <span className="absolute left-[9px] top-6 h-[calc(100%-1rem)] w-px bg-border" />}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{event.statusLabel}</p><time className="text-xs text-muted-foreground">{date(event.createdAt)}</time></div>{event.message && <p className="mt-1 text-sm leading-5 text-muted-foreground">{event.message}</p>}{event.important && <span className="mt-2 inline-block rounded-full bg-[#fff0c9] px-2 py-1 text-[10px] font-bold text-[#765300]">Important update</span>}</div></li>)}</ol> : <p className="text-sm text-muted-foreground">Project created {date(project.createdAt)}. Updates will appear here.</p>}</div>
+          </article>)}</div>
+        </QueryState>
+      </section>
     </div>
   );
 }
@@ -2274,6 +2350,8 @@ function AppRouter() {
       <Switch>
         <Route path="/" component={LandingPage} />
         <Route path="/companies" component={CompaniesPage} />
+        <Route path="/companies/:companyId" component={CompanyDetailPage} />
+        <Route path="/estimator" component={EnergyEstimatorPage} />
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/quote" component={() => <ProtectedRoute><QuotePage /></ProtectedRoute>} />
         <Route path="/customer/dashboard" component={() => <ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
