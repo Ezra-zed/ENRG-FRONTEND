@@ -22,6 +22,47 @@ export type Company = {
   email?: string;
   role?: string;
   rating?: number;
+  verified?: boolean;
+  locations?: string[];
+  logo?: string | null;
+  type?: string;
+};
+
+export type SolarEstimateInput = {
+  propertyType: 'residential' | 'commercial';
+  location: string;
+  monthlyBillAmount?: number;
+  monthlyConsumptionKwh?: number;
+  solarCapacityKw?: number;
+  roofAreaSqFt?: number;
+  batteryRequired?: boolean;
+  backupHours?: number;
+};
+
+export type SolarEstimate = {
+  estimate: boolean;
+  finalVendorQuotation: boolean;
+  disclaimer: string;
+  recommendedCapacityKw: number;
+  panelCount: number;
+  assumptions: { panelWatts: number };
+  expectedGeneration: { dailyKwh: number; monthlyKwh: number; annualKwh: number };
+  estimatedSavings: { monthly: number; annual: number; currency: string };
+  estimatedPriceRange: { min: number; max: number; currency: string };
+  battery: { required: boolean; recommendedCapacityKwh: number; backupHours: number };
+};
+
+export type CustomerProjectTracking = {
+  projectId: string;
+  vendor: { id: string; name: string; type?: string } | null;
+  status: string;
+  statusLabel: string;
+  progressPercent: number;
+  expectedCompletionAt?: string | null;
+  history: Array<{ id?: string; status: string; statusLabel: string; message?: string | null; important: boolean; createdAt?: string }>;
+  location?: string;
+  propertyType?: string;
+  createdAt?: string;
 };
 
 export type Customer = {
@@ -63,6 +104,34 @@ export type Product = {
   badge?: string;
 };
 
+export type ProjectQuote = {
+  id: string;
+  companyName?: string;
+  estimatedPrice: number;
+  status: string;
+  warrantyYears?: number;
+  notes?: string;
+  submittedAt?: string;
+};
+
+export type EnrgPayment = {
+  id: string;
+  amount: number; // smallest currency unit (paise for INR)
+  currency: string;
+  status: 'creating' | 'created' | 'pending' | 'authorized' | 'paid' | 'failed' | 'cancelled' | 'interrupted' | 'creation_failed' | string;
+  razorpayOrderId?: string | null;
+  razorpayPaymentId?: string | null;
+  projectId: string;
+  quoteId: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PaymentOrder = {
+  payment: EnrgPayment;
+  checkout: { keyId: string; orderId: string; amount?: number; currency?: string };
+};
+
 // ---------------------------------------------------------------------------
 // Query-key helpers (kept stable so invalidations shared by the app keep working)
 // ---------------------------------------------------------------------------
@@ -71,6 +140,8 @@ export const getGetHomeContentQueryKey = ({ type }: { type: SystemPreference }) 
 export const getListMarketplaceProductsQueryKey = (params: Record<string, unknown>) => ['marketplace-products', params];
 export const getListCompaniesQueryKey = (params: Record<string, unknown>) => ['companies', params];
 export const getListProjectQuotesQueryKey = (id: string) => ['project-quotes', id];
+export const getPublicCompanyQueryKey = (id: string) => ['public-company', id];
+export const getMyProjectTrackingQueryKey = () => ['my-project-tracking'];
 export const getListCustomersQueryKey = (params: Record<string, unknown>) => ['customers', params];
 export const getGetCompanyMetricsQueryKey = () => ['company-metrics'];
 export const getListCompanyLeadsQueryKey = (params: Record<string, unknown>) => ['company-leads', params];
@@ -89,16 +160,28 @@ export const API_BASE_URL: string =
 const TOKEN_KEY = 'enrg_token';
 
 function getStoredToken(): string | null {
-  if (typeof sessionStorage !== 'undefined') {
-    const sessionToken = sessionStorage.getItem(TOKEN_KEY);
-    if (sessionToken) return sessionToken;
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const sessionToken = sessionStorage.getItem(TOKEN_KEY);
+      if (sessionToken) return sessionToken;
+    }
+  } catch {
+    // Storage can be disabled by the browser; authenticated cookies remain available.
   }
-  return typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  } catch {
+    return null;
+  }
 }
 
 function storeToken(token?: string | null): void {
-  if (typeof sessionStorage === 'undefined') return;
-  if (token) sessionStorage.setItem(TOKEN_KEY, token);
+  if (!token || typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // Signup/signin also set an HttpOnly session cookie; do not fail a completed auth request on storage policy.
+  }
 }
 
 type ApiEnvelope<T> = {
@@ -112,6 +195,8 @@ type RequestOptions = {
   method?: string;
   json?: unknown;      // JSON body — serialised & sent with Content-Type: application/json
   formData?: FormData; // multipart/form-data body
+  cache?: RequestCache;
+  headers?: Record<string, string>;
 };
 
 /**
@@ -123,6 +208,7 @@ type RequestOptions = {
 async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...options.headers,
   };
   const token = getStoredToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -140,6 +226,7 @@ async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<
     headers,
     body,
     credentials: 'include',
+    cache: options.cache,
   });
 
   let envelope: ApiEnvelope<T> | null = null;
@@ -239,6 +326,10 @@ function toCompany(raw: Record<string, any>): Company {
     email: raw?.company?.email ?? raw?.email,
     role: raw?.company?.role ?? raw?.role,
     rating: typeof raw?.rating === 'number' ? raw.rating : undefined,
+    verified: Boolean(raw?.verified),
+    locations: Array.isArray(raw?.locations) ? raw.locations : undefined,
+    logo: raw?.logo ?? null,
+    type: raw?.type ?? raw?.role,
   };
 }
 // ---------------------------------------------------------------------------
@@ -326,6 +417,28 @@ export function useListCompanies(params: Record<string, unknown> = {}, options?:
   });
 }
 
+export function useGetPublicCompany(id: string) {
+  return useQuery({
+    queryKey: getPublicCompanyQueryKey(id),
+    enabled: Boolean(id),
+    queryFn: () => apiFetch<Record<string, any>>(`/api/companies/${encodeURIComponent(id)}`),
+  });
+}
+
+export function useSolarEstimate() {
+  return useMutation({
+    mutationFn: ({ data }: { data: SolarEstimateInput }) =>
+      apiFetch<SolarEstimate>('/api/estimator/estimate', { method: 'POST', json: data }),
+  });
+}
+
+export function useMyProjectTracking() {
+  return useQuery({
+    queryKey: getMyProjectTrackingQueryKey(),
+    queryFn: () => apiFetch<{ items: CustomerProjectTracking[] }>('/api/projects/mine/tracking'),
+  });
+}
+
 export function useRequestProjectQuote() {
   return useMutation({
     mutationFn: async ({ formData }: { formData: FormData }) => {
@@ -344,12 +457,39 @@ export function useListProjectQuotes(id: string, options?: { query?: { enabled?:
     queryKey: options?.query?.queryKey ?? getListProjectQuotesQueryKey(id),
     enabled: options?.query?.enabled ?? Boolean(id),
     queryFn: async () => {
-      const data = await apiFetch<{ projectId: string; quotes: Record<string, any>[]; count: number }>(
+      const data = await apiFetch<{ projectId: string; quotes: ProjectQuote[]; count: number }>(
         `/api/projects/${encodeURIComponent(id)}/quotes`,
       );
       return data.quotes ?? [];
     },
   });
+}
+
+// Payment requests intentionally share this authenticated fetch layer with the
+// rest of the app so browser and future Expo clients use the same API contract.
+export async function createPaymentOrder(projectId: string, quoteId: string, idempotencyKey: string) {
+  return apiFetch<PaymentOrder>('/api/payments/orders', {
+    method: 'POST',
+    json: { projectId, quoteId },
+    headers: { 'Idempotency-Key': idempotencyKey },
+  });
+}
+
+export async function verifyPayment(input: {
+  paymentId: string;
+  orderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}) {
+  return apiFetch<{ payment: EnrgPayment }>('/api/payments/verify', { method: 'POST', json: input });
+}
+
+export async function cancelPayment(paymentId: string) {
+  return apiFetch<{ payment: EnrgPayment }>('/api/payments/cancel', { method: 'POST', json: { paymentId } });
+}
+
+export async function getPaymentStatus(paymentId: string) {
+  return apiFetch<{ payment: EnrgPayment }>(`/api/payments/${encodeURIComponent(paymentId)}`);
 }
 
 export function useRegisterCustomer() {
@@ -391,16 +531,26 @@ export function useSignin() {
 }
 
 export async function getCurrentUser(): Promise<Record<string, any>> {
-  const result = await apiFetch<Record<string, any> | { user: Record<string, any> }>('/auth/me');
+  const result = await apiFetch<Record<string, any> | { user: Record<string, any> }>('/auth/me', { cache: 'no-store' });
   return result && 'user' in result && result.user ? result.user : result;
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch('/auth/logout', { method: 'POST' });
-  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_KEY);
-  if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('enrg_user');
+  try {
+    await apiFetch('/auth/logout', { method: 'POST', cache: 'no-store' });
+  } finally {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem('enrg_user');
+      }
+    } catch {}
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem('enrg_user');
+      }
+    } catch {}
   }
 }
 

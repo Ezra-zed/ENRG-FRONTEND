@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://enrg.co.in/sitemap.xml
