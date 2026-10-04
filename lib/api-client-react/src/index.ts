@@ -160,16 +160,28 @@ export const API_BASE_URL: string =
 const TOKEN_KEY = 'enrg_token';
 
 function getStoredToken(): string | null {
-  if (typeof sessionStorage !== 'undefined') {
-    const sessionToken = sessionStorage.getItem(TOKEN_KEY);
-    if (sessionToken) return sessionToken;
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const sessionToken = sessionStorage.getItem(TOKEN_KEY);
+      if (sessionToken) return sessionToken;
+    }
+  } catch {
+    // Storage can be disabled by the browser; authenticated cookies remain available.
   }
-  return typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  } catch {
+    return null;
+  }
 }
 
 function storeToken(token?: string | null): void {
-  if (typeof sessionStorage === 'undefined') return;
-  if (token) sessionStorage.setItem(TOKEN_KEY, token);
+  if (!token || typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // Signup/signin also set an HttpOnly session cookie; do not fail a completed auth request on storage policy.
+  }
 }
 
 type ApiEnvelope<T> = {
@@ -527,14 +539,18 @@ export async function logout(): Promise<void> {
   try {
     await apiFetch('/auth/logout', { method: 'POST', cache: 'no-store' });
   } finally {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem(TOKEN_KEY);
-      sessionStorage.removeItem('enrg_user');
-    }
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem('enrg_user');
-    }
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem('enrg_user');
+      }
+    } catch {}
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem('enrg_user');
+      }
+    } catch {}
   }
 }
 

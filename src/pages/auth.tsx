@@ -1,5 +1,5 @@
 import { AuthLayout } from '@/layouts/section-shells';
-import { useAuth, getAccountPath, notifyAuthChanged } from '@/auth/auth-context';
+import { useAuth, getAuthReturnTo, getAccountPath } from '@/auth/auth-context';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { FcGoogle } from 'react-icons/fc';
@@ -10,9 +10,11 @@ import { Button, Field } from '@/components/form-controls';
 
 export function Signup() {
   const mutation = useSignup();
+  const { refresh } = useAuth();
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const [role, setRole] = useState<SignupInputRole>('user');
+  const [authConfirmError, setAuthConfirmError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -41,10 +43,20 @@ export function Signup() {
         },
       },
       {
-        onSuccess: (session) => {
-          localStorage.setItem('enrg_user', JSON.stringify(session.user));
-          notifyAuthChanged();
-          setLocation(role === 'user' && returnTo ? returnTo : role === 'user' ? '/customer/dashboard' : '/company/profile/setup');
+        onSuccess: async (session) => {
+          setAuthConfirmError(null);
+          const currentUser = await refresh();
+          const sameAccount = Boolean(currentUser && session.user && (
+            (session.user.id && currentUser.id ? currentUser.id === session.user.id : currentUser.email && session.user.email && currentUser.email.toLowerCase() === session.user.email.toLowerCase())
+          ));
+          if (!currentUser || !sameAccount || currentUser.role !== session.user?.role || currentUser.role !== role) {
+            setAuthConfirmError('Your account was created, but we could not confirm your sign-in. Check your connection and sign in to continue.');
+            return;
+          }
+          const destination = role === 'user'
+            ? getAuthReturnTo(currentUser, returnTo)
+            : getAuthReturnTo(currentUser, role === 'install-co' || role === 'seller-co' ? '/company/profile/setup' : null);
+          setLocation(destination);
         },
       },
     );
@@ -87,6 +99,11 @@ export function Signup() {
               We couldn't create that account. Check your details and try again.
             </p>
           )}
+          {authConfirmError && (
+            <p role="alert" data-testid="status-signup-auth-error" className="mb-4 rounded-xl border border-[#e4b5aa] bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
+              {authConfirmError} <Link href="/signin" className="font-bold underline">Sign in</Link>
+            </p>
+          )}
           <Button type="submit" data-testid="button-submit-signup" disabled={mutation.isPending} className="w-full">
             {mutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Create my account
           </Button>
@@ -122,6 +139,7 @@ export function Signup() {
 
 export function LegacySignin() {
   const mutation = useSignin();
+  const { refresh } = useAuth();
   const [, setLocation] = useLocation();
   const [method, setMethod] = useState<SigninInputMethod>('JWT-auth');
   const [form, setForm] = useState({
@@ -143,10 +161,10 @@ export function LegacySignin() {
     mutation.mutate(
       { data },
       {
-        onSuccess: (session) => {
-          localStorage.setItem('enrg_user', JSON.stringify(session.user));
-          notifyAuthChanged();
-          setLocation(session.user.role === 'user' ? '/customer/dashboard' : session.user.role === 'admin' ? '/admin/dashboard' : '/company/dashboard');
+        onSuccess: async (session) => {
+          const currentUser = await refresh();
+          if (!currentUser || currentUser.id !== session.user?.id || currentUser.role !== session.user?.role) return;
+          setLocation(getAccountPath(currentUser));
         },
       },
     );
@@ -221,6 +239,7 @@ export function Signin() {
     phone: '',
     otp: '',
   });
+  const [authConfirmError, setAuthConfirmError] = useState<string | null>(null);
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,12 +258,17 @@ export function Signin() {
       { data },
       {
         onSuccess: async (session) => {
-          localStorage.setItem('enrg_user', JSON.stringify(session.user));
-          notifyAuthChanged();
+          setAuthConfirmError(null);
           const currentUser = await refresh();
           const returnTo = new URLSearchParams(location.split('?')[1] || '').get('returnTo');
-          const signedInUser = currentUser || session.user;
-          setLocation(returnTo || getAccountPath(signedInUser));
+          const sameAccount = Boolean(currentUser && session.user && (
+            (session.user.id && currentUser.id ? currentUser.id === session.user.id : currentUser.email && session.user.email && currentUser.email.toLowerCase() === session.user.email.toLowerCase())
+          ));
+          if (!currentUser || !sameAccount || currentUser.role !== session.user?.role) {
+            setAuthConfirmError('Your credentials were accepted, but we could not confirm your session. Please try again.');
+            return;
+          }
+          setLocation(getAuthReturnTo(currentUser, returnTo));
         },
       },
     );
@@ -315,6 +339,11 @@ export function Signin() {
             {mutation.error && (
               <p data-testid="status-signin-error" className="rounded-xl border border-[#e4b5aa] bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
                 Sign in was not completed. Check your details and try again.
+              </p>
+            )}
+            {authConfirmError && (
+              <p role="alert" data-testid="status-signin-auth-error" className="rounded-xl border border-[#e4b5aa] bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
+                {authConfirmError}
               </p>
             )}
             <Button type="submit" data-testid="button-submit-signin" disabled={mutation.isPending} className="w-full py-3.5">
