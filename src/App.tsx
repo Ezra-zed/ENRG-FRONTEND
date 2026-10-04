@@ -44,14 +44,16 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const authRequestId = useRef(0);
 
   const refresh = async () => {
+    const requestId = ++authRequestId.current;
     try {
       const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      if (requestId === authRequestId.current) setUser(currentUser);
       return currentUser;
     } catch {
-      setUser(null);
+      if (requestId === authRequestId.current) setUser(null);
       return null;
     }
   };
@@ -74,10 +76,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    // Ignore any auth bootstrap request that began before logout completed.
+    authRequestId.current += 1;
+    setUser(null);
     try {
       await logoutRequest();
     } catch {
     } finally {
+      authRequestId.current += 1;
       setUser(null);
     }
   };

@@ -155,6 +155,7 @@ type RequestOptions = {
   method?: string;
   json?: unknown;      // JSON body — serialised & sent with Content-Type: application/json
   formData?: FormData; // multipart/form-data body
+  cache?: RequestCache;
 };
 
 /**
@@ -183,6 +184,7 @@ async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<
     headers,
     body,
     credentials: 'include',
+    cache: options.cache,
   });
 
   let envelope: ApiEnvelope<T> | null = null;
@@ -460,16 +462,22 @@ export function useSignin() {
 }
 
 export async function getCurrentUser(): Promise<Record<string, any>> {
-  const result = await apiFetch<Record<string, any> | { user: Record<string, any> }>('/auth/me');
+  const result = await apiFetch<Record<string, any> | { user: Record<string, any> }>('/auth/me', { cache: 'no-store' });
   return result && 'user' in result && result.user ? result.user : result;
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch('/auth/logout', { method: 'POST' });
-  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_KEY);
-  if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('enrg_user');
+  try {
+    await apiFetch('/auth/logout', { method: 'POST', cache: 'no-store' });
+  } finally {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem('enrg_user');
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('enrg_user');
+    }
   }
 }
 
