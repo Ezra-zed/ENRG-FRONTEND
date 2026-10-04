@@ -2326,13 +2326,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
   const { user, loading } = useAuth();
   const [location] = useLocation();
   if (loading) {
     return <div className="grid min-h-[calc(100dvh-72px)] place-items-center text-sm text-muted-foreground">Checking your session…</div>;
   }
   if (!user) return <Redirect to={`/signin?returnTo=${encodeURIComponent(location)}`} />;
+  if (requiredRole && user.role !== requiredRole) return <Redirect to={getAccountPath(user)} />;
   return <>{children}</>;
 }
 
@@ -2472,7 +2473,7 @@ function AppRouter() {
         <Route
           path="/admin/dashboard"
           component={() => (
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole="admin">
               <AdminDashboard />
             </ProtectedRoute>
           )}
@@ -2480,7 +2481,7 @@ function AppRouter() {
         <Route
           path="/admin/management"
           component={() => (
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole="admin">
               <AdminManagement />
             </ProtectedRoute>
           )}
