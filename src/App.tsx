@@ -3,13 +3,16 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
-import { ArrowRight, BadgeCheck, BarChart3, BatteryCharging, Building2, CalendarDays, Check, CircleDollarSign, ClipboardList, Clock3, FileText, Home as HomeIcon, Loader2, LogIn, MapPin, Menu, Package, PanelLeft, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Star, Sun, TrendingDown, Upload, UserRound, Users, X, Zap } from 'lucide-react';
+import { ArrowRight, BadgeCheck, BarChart3, BatteryCharging, Building2, CalendarDays, Check, ChevronDown, CircleDollarSign, ClipboardList, Clock3, FileText, Home as HomeIcon, Loader2, LogIn, MapPin, Menu, Package, PanelLeft, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Star, Sun, TrendingDown, Upload, UserRound, Users, X, Zap } from 'lucide-react';
 import { API_BASE_URL, getCurrentUser, getGetAdminDashboardQueryKey, getGetAdminManagementQueryKey, getGetCompanyMetricsQueryKey, getGetHomeContentQueryKey, getListCompaniesQueryKey, getListCompanyLeadsQueryKey, getListCustomersQueryKey, getListMarketplaceProductsQueryKey, getListProjectQuotesQueryKey, getListAdminLeadsQueryKey, logout as logoutRequest, useHealthCheck, useSignup, useSignin, useRegisterCustomer, useListCompanies, useListCustomers, useRequestProjectQuote, useListProjectQuotes, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useListMarketplaceProducts, useGetHomeContent, useVerifyCompany, useGetAdminDashboard, useGetAdminManagement, useListAdminLeads, useGetPublicCompany, useSolarEstimate, useMyProjectTracking } from '@workspace/api-client-react';
 import { LeadStatus, ProductCategory, PropertyType, SigninInputMethod, SignupInputRole, SystemPreference, VerificationInputVerificationBadgesItem, type Company, type Lead, type Product, type SolarEstimateInput } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { SEO } from '@/components/SEO';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Select as Dropdown, SelectContent as DropdownContent, SelectItem as DropdownItem, SelectTrigger as DropdownTrigger, SelectValue as DropdownValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -122,14 +125,83 @@ function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> 
   );
 }
 
-function SelectField({ label, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
+type EnrgSelectProps = {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  children: React.ReactNode;
+  className?: string;
+  'aria-label'?: string;
+  'data-testid'?: string;
+};
+
+function EnrgSelect({ value, onValueChange, placeholder = 'Select an option', children, className = '', 'aria-label': ariaLabel, 'data-testid': testId }: EnrgSelectProps) {
+  return (
+    <Dropdown value={value} onValueChange={onValueChange}>
+      <DropdownTrigger aria-label={ariaLabel} data-testid={testId} className={`min-w-0 ${className}`}>
+        <DropdownValue placeholder={placeholder} />
+      </DropdownTrigger>
+      <DropdownContent position="popper" sideOffset={6} collisionPadding={8} className="w-[var(--radix-select-trigger-width)]">
+        {children}
+      </DropdownContent>
+    </Dropdown>
+  );
+}
+
+function SelectField({ label, children, ...props }: EnrgSelectProps & { label: string }) {
   return (
     <label className="grid gap-1.5 text-sm font-medium text-foreground">
       {label}
-      <select className="h-11 w-full rounded-xl border border-input bg-card px-3.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-primary/25" {...props}>
-        {children}
-      </select>
+      <EnrgSelect aria-label={label} className="w-full" {...props}>{children}</EnrgSelect>
     </label>
+  );
+}
+
+const solarServiceLocations = [
+  'Ahmedabad, Gujarat', 'Bengaluru, Karnataka', 'Bhopal, Madhya Pradesh', 'Chandigarh', 'Chennai, Tamil Nadu',
+  'Coimbatore, Tamil Nadu', 'Delhi', 'Hyderabad, Telangana', 'Indore, Madhya Pradesh', 'Jaipur, Rajasthan',
+  'Kochi, Kerala', 'Kolkata, West Bengal', 'Lucknow, Uttar Pradesh', 'Mumbai, Maharashtra', 'Nagpur, Maharashtra',
+  'Nashik, Maharashtra', 'Pune, Maharashtra', 'Surat, Gujarat', 'Thiruvananthapuram, Kerala', 'Visakhapatnam, Andhra Pradesh',
+];
+
+function LocationCombobox({ value, onValueChange, placeholder, ariaLabel, testId, triggerRef, invalid = false, required = false }: { value: string; onValueChange: (value: string) => void; placeholder: string; ariaLabel: string; testId?: string; triggerRef?: React.Ref<HTMLButtonElement>; invalid?: boolean; required?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const chooseLocation = (location: string) => {
+    onValueChange(location);
+    setSearch(location);
+    setOpen(false);
+  };
+  return (
+    <Popover open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (nextOpen) setSearch(''); }}>
+      <PopoverTrigger asChild>
+        <button ref={triggerRef} type="button" aria-label={ariaLabel} aria-haspopup="listbox" aria-expanded={open} aria-invalid={invalid || undefined} aria-required={required || undefined} aria-describedby={invalid ? 'estimator-location-error' : undefined} data-testid={testId} className={`flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[13px] border bg-card px-3.5 text-left text-sm font-normal text-foreground shadow-sm shadow-black/[.035] transition-[border-color,box-shadow,background-color] duration-150 hover:border-accent/50 hover:shadow-md hover:shadow-black/[.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 data-[state=open]:border-accent data-[state=open]:ring-2 data-[state=open]:ring-primary/15 ${invalid ? 'border-destructive focus-visible:ring-destructive/20' : 'border-input focus-visible:border-accent'}`}>
+          <span className={`flex min-w-0 items-center gap-2 truncate ${value ? '' : 'text-muted-foreground'}`}><MapPin size={16} className="shrink-0" aria-hidden="true" />{value || placeholder}</span>
+          <ChevronDown size={16} className={`shrink-0 text-muted-foreground transition-transform duration-150 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" sideOffset={6} collisionPadding={8} className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] rounded-[13px] border-border bg-card p-1.5 shadow-xl shadow-black/10">
+        <Command>
+          <CommandInput autoComplete="off" value={search} onValueChange={(next) => { setSearch(next); onValueChange(next); }} placeholder="Search a city or region" aria-label={`Search ${ariaLabel.toLowerCase()}`} />
+          <CommandList className="max-h-60 overscroll-contain">
+            <CommandEmpty>Type a city or region to use it.</CommandEmpty>
+            <CommandItem value={`clear-location-filter ${search}`} onSelect={() => chooseLocation('')} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground data-[selected=true]:bg-accent/10 data-[selected=true]:text-accent">
+              Clear location filter
+            </CommandItem>
+            {search.trim() && !solarServiceLocations.some((location) => location.toLocaleLowerCase() === search.trim().toLocaleLowerCase()) && (
+              <CommandItem value={`use-location-${search}`} onSelect={() => chooseLocation(search.trim())} className="rounded-lg px-3 py-2.5 text-sm data-[selected=true]:bg-accent/10 data-[selected=true]:text-accent">
+                Use “{search.trim()}”
+              </CommandItem>
+            )}
+            {solarServiceLocations.map((location) => (
+              <CommandItem key={location} value={location} onSelect={() => chooseLocation(location)} className="rounded-lg px-3 py-2.5 text-sm data-[selected=true]:bg-accent/10 data-[selected=true]:text-accent">
+                {location}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -773,10 +845,10 @@ function Marketplace() {
             <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
             <input data-testid="input-product-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search equipment" className="h-10 w-full rounded-full border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-accent sm:w-56" />
           </label>
-          <select data-testid="select-product-sort" value={sort} onChange={(e) => setSort(e.target.value as 'price' | 'newest')} className="h-10 rounded-full border border-input bg-card px-3 text-xs font-semibold outline-none">
-            <option value="newest">Newest first</option>
-            <option value="price">Price</option>
-          </select>
+          <EnrgSelect aria-label="Sort products" data-testid="select-product-sort" value={sort} onValueChange={(value) => setSort(value as 'price' | 'newest')} className="w-auto text-xs font-semibold">
+            <DropdownItem value="newest">Newest first</DropdownItem>
+            <DropdownItem value="price">Price</DropdownItem>
+          </EnrgSelect>
         </div>
       </div>
       <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()} empty={!query.isLoading && !query.error && products.length === 0} emptyText="No equipment matches that search.">
@@ -904,16 +976,13 @@ function CompaniesPage() {
           </label>
           <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-foreground">
             Service location
-            <span className="relative block">
-              <MapPin aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-              <input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} placeholder="City or region" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm font-normal outline-none placeholder:text-muted-foreground/80 focus:border-accent focus:ring-2 focus:ring-primary/20" aria-label="Filter by service location" />
-            </span>
+            <LocationCombobox value={locationFilter} onValueChange={setLocationFilter} placeholder="Choose or search a location" ariaLabel="Filter by service location" testId="select-company-location" />
           </label>
           <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-foreground">
             Minimum rating
-            <select value={minRating} onChange={(event) => setMinRating(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm font-normal outline-none focus:border-accent focus:ring-2 focus:ring-primary/20">
-              <option value="">Any rating</option><option value="3">3+ stars</option><option value="4">4+ stars</option><option value="4.5">4.5+ stars</option>
-            </select>
+            <EnrgSelect value={minRating} onValueChange={setMinRating} placeholder="Any rating" className="w-full font-normal">
+              <DropdownItem value="3">3+ stars</DropdownItem><DropdownItem value="4">4+ stars</DropdownItem><DropdownItem value="4.5">4.5+ stars</DropdownItem>
+            </EnrgSelect>
           </label>
           <label className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground focus-within:border-accent focus-within:ring-2 focus-within:ring-primary/20 sm:col-span-2 lg:col-span-1">
             <input type="checkbox" checked={verifiedOnly} onChange={(event) => setVerifiedOnly(event.target.checked)} className="size-4 shrink-0 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" />
@@ -962,9 +1031,17 @@ function EnergyEstimatorPage() {
   const estimateMutation = useSolarEstimate();
   const [form, setForm] = useState({ propertyType: 'residential' as 'residential' | 'commercial', location: '', monthlyBillAmount: '', monthlyConsumptionKwh: '', roofAreaSqFt: '', batteryRequired: false, backupHours: '4' });
   const [estimate, setEstimate] = useState<ReturnType<typeof useSolarEstimate>['data']>(undefined);
+  const [locationError, setLocationError] = useState(false);
+  const locationTriggerRef = useRef<HTMLButtonElement>(null);
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((current) => ({ ...current, [key]: event.target.value }));
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (!form.location.trim()) {
+      setLocationError(true);
+      locationTriggerRef.current?.focus();
+      return;
+    }
+    setLocationError(false);
     setEstimate(undefined);
     const data: SolarEstimateInput = { propertyType: form.propertyType, location: form.location.trim(), ...(form.monthlyBillAmount ? { monthlyBillAmount: Number(form.monthlyBillAmount) } : {}), ...(form.monthlyConsumptionKwh ? { monthlyConsumptionKwh: Number(form.monthlyConsumptionKwh) } : {}), ...(form.roofAreaSqFt ? { roofAreaSqFt: Number(form.roofAreaSqFt) } : {}), batteryRequired: form.batteryRequired, backupHours: form.batteryRequired ? Number(form.backupHours) : 0 };
     estimateMutation.mutate({ data }, { onSuccess: setEstimate });
@@ -974,12 +1051,14 @@ function EnergyEstimatorPage() {
     <div className="grid items-start gap-6 lg:grid-cols-[.9fr_1.1fr]">
       <form onSubmit={submit} className="grid gap-4 rounded-[2rem] border border-border bg-card p-6 shadow-[var(--shadow-card)] sm:p-8">
         <div><h2 className="font-display text-2xl font-bold">Your energy profile</h2><p className="mt-1 text-sm text-muted-foreground">Share your monthly bill or usage to calculate a planning estimate.</p></div>
-        <SelectField label="Property type" value={form.propertyType} onChange={update('propertyType')}><option value="residential">Residential</option><option value="commercial">Commercial</option></SelectField>
-        <Field required label="City or location" placeholder="Pune, Maharashtra" value={form.location} onChange={update('location')} />
+        <SelectField label="Property type" value={form.propertyType} onValueChange={(value) => setForm((current) => ({ ...current, propertyType: value as typeof current.propertyType }))} placeholder="Select property type">
+          <DropdownItem value="residential">Residential</DropdownItem><DropdownItem value="commercial">Commercial</DropdownItem>
+        </SelectField>
+        <label className="grid gap-1.5 text-sm font-medium text-foreground"><span>City or location <span className="text-destructive" aria-hidden="true">*</span></span><LocationCombobox value={form.location} onValueChange={(value) => { setForm((current) => ({ ...current, location: value })); if (value.trim()) setLocationError(false); }} placeholder="Choose or search a location" ariaLabel="City or location" testId="select-estimator-location" triggerRef={locationTriggerRef} required invalid={locationError} />{locationError && <span role="alert" id="estimator-location-error" className="text-xs font-normal text-destructive">Choose or enter a city or location.</span>}</label>
         <div className="grid gap-4 sm:grid-cols-2"><Field type="number" min="1" label="Monthly electricity bill (₹)" placeholder="4500" value={form.monthlyBillAmount} onChange={update('monthlyBillAmount')} /><Field type="number" min="1" label="Monthly use (kWh, optional)" placeholder="600" value={form.monthlyConsumptionKwh} onChange={update('monthlyConsumptionKwh')} /></div>
         <Field type="number" min="1" label="Available roof area (sq ft, optional)" placeholder="500" value={form.roofAreaSqFt} onChange={update('roofAreaSqFt')} />
         <label className="flex items-center gap-3 rounded-2xl bg-secondary/70 p-4 text-sm font-semibold"><input type="checkbox" checked={form.batteryRequired} onChange={(event) => setForm((current) => ({ ...current, batteryRequired: event.target.checked }))} className="size-4 accent-primary" /><BatteryCharging size={18} className="text-accent" />Include battery backup</label>
-        {form.batteryRequired && <SelectField label="Backup duration" value={form.backupHours} onChange={update('backupHours')}><option value="2">2 hours</option><option value="4">4 hours</option><option value="6">6 hours</option><option value="8">8 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></SelectField>}
+        {form.batteryRequired && <SelectField label="Backup duration" value={form.backupHours} onValueChange={(value) => setForm((current) => ({ ...current, backupHours: value }))} placeholder="Select backup duration"><DropdownItem value="2">2 hours</DropdownItem><DropdownItem value="4">4 hours</DropdownItem><DropdownItem value="6">6 hours</DropdownItem><DropdownItem value="8">8 hours</DropdownItem><DropdownItem value="12">12 hours</DropdownItem><DropdownItem value="24">24 hours</DropdownItem></SelectField>}
         {estimateMutation.error && <p role="alert" className="rounded-xl bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">{(estimateMutation.error as Error).message || 'We could not calculate an estimate. Check your inputs and try again.'}</p>}
         <Button type="submit" disabled={estimateMutation.isPending || (!form.monthlyBillAmount && !form.monthlyConsumptionKwh)}>{estimateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}Calculate estimate</Button>
       </form>
@@ -1106,16 +1185,16 @@ function QuotePage() {
           <Field required label="Mobile number" placeholder="98765 43210" value={form.mobile} onChange={update('mobile')} data-testid="input-quote-mobile" />
           <Field required label="City or location" placeholder="For example, Pune" value={form.location} onChange={update('location')} data-testid="input-quote-location" />
           <Field type="number" min="0" step="1" label="Monthly electricity bill" placeholder="₹ 4,500" value={form.monthlyBill} onChange={updateMonthlyBill} data-testid="input-quote-bill" />
-          <SelectField label="Property type" value={form.propertyType} onChange={update('propertyType')} data-testid="select-quote-property">
-            <option value="residential">Residential</option>
-            <option value="commercial">Commercial</option>
-            <option value="industrial">Industrial</option>
-            <option value="other">Other</option>
+          <SelectField label="Property type" value={form.propertyType} onValueChange={(value) => setForm((current) => ({ ...current, propertyType: value }))} data-testid="select-quote-property">
+            <DropdownItem value="residential">Residential</DropdownItem>
+            <DropdownItem value="commercial">Commercial</DropdownItem>
+            <DropdownItem value="industrial">Industrial</DropdownItem>
+            <DropdownItem value="other">Other</DropdownItem>
           </SelectField>
-          <SelectField label="System preference" value={form.systemPreference} onChange={update('systemPreference')} data-testid="select-quote-system">
-            <option value="on-grid">On-grid</option>
-            <option value="off-grid">Off-grid</option>
-            <option value="hybrid-grid">Hybrid grid</option>
+          <SelectField label="System preference" value={form.systemPreference} onValueChange={(value) => setForm((current) => ({ ...current, systemPreference: value }))} data-testid="select-quote-system">
+            <DropdownItem value="on-grid">On-grid</DropdownItem>
+            <DropdownItem value="off-grid">Off-grid</DropdownItem>
+            <DropdownItem value="hybrid-grid">Hybrid grid</DropdownItem>
           </SelectField>
           <Field type="number" label="Comfortable budget (optional)" placeholder="₹ 1,50,000" value={form.budget} onChange={update('budget')} data-testid="input-quote-budget" />
           <label className="group grid cursor-pointer gap-1.5 text-sm font-medium text-foreground sm:col-span-2">
@@ -1248,11 +1327,11 @@ function Register() {
         <Field type="email" label="Email address" placeholder="you@example.com" value={form.email} onChange={update('email')} data-testid="input-register-email" />
         <Field label="City or location" placeholder="Pune" value={form.location} onChange={update('location')} data-testid="input-register-location" />
         <Field label="Pincode" placeholder="411001" value={form.pincode} onChange={update('pincode')} data-testid="input-register-pincode" />
-        <SelectField label="Property type" value={form.propertyType} onChange={update('propertyType')} data-testid="select-register-property">
-          <option value="residential">Residential</option>
-          <option value="commercial">Commercial</option>
-          <option value="industrial">Industrial</option>
-          <option value="other">Other</option>
+        <SelectField label="Property type" value={form.propertyType} onValueChange={(value) => setForm((current) => ({ ...current, propertyType: value }))} data-testid="select-register-property">
+          <DropdownItem value="residential">Residential</DropdownItem>
+          <DropdownItem value="commercial">Commercial</DropdownItem>
+          <DropdownItem value="industrial">Industrial</DropdownItem>
+          <DropdownItem value="other">Other</DropdownItem>
         </SelectField>
         <Field type="number" label="Monthly bill" placeholder="4500" value={form.monthlyBillAmount} onChange={update('monthlyBillAmount')} data-testid="input-register-bill" />
         <Field label="System size, if known" placeholder="2–4 kW" value={form.requiredSystemSize} onChange={update('requiredSystemSize')} data-testid="input-register-size" />
@@ -2054,14 +2133,14 @@ function CompanyLeads() {
               <p className="text-sm font-semibold">{money(lead.monthlyBill)}</p>
               <StatusPill status={lead.status} />
               <div className="flex flex-wrap gap-2">
-                <select data-testid={`select-lead-status-${lead.id}`} value={lead.status} onChange={(e) => updateStatus(lead, e.target.value as LeadStatus)} className="h-9 rounded-full border border-input bg-card px-2 text-xs font-semibold">
-                  <option value="new">New</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="site-visit">Site visit</option>
-                  <option value="won">Won</option>
-                  <option value="lost">Lost</option>
-                </select>
+                <EnrgSelect aria-label={`Update status for ${lead.customerName}`} data-testid={`select-lead-status-${lead.id}`} value={lead.status} onValueChange={(value) => updateStatus(lead, value as LeadStatus)} className="w-auto text-xs font-semibold">
+                  <DropdownItem value="new">New</DropdownItem>
+                  <DropdownItem value="accepted">Accepted</DropdownItem>
+                  <DropdownItem value="contacted">Contacted</DropdownItem>
+                  <DropdownItem value="site-visit">Site visit</DropdownItem>
+                  <DropdownItem value="won">Won</DropdownItem>
+                  <DropdownItem value="lost">Lost</DropdownItem>
+                </EnrgSelect>
                 <Button
                   data-testid={`button-lead-quote-${lead.id}`}
                   variant="quiet"
