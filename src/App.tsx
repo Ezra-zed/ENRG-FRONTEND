@@ -10,6 +10,7 @@ import { SEO } from '@/components/SEO';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import Articles from '@/pages/articles';
 
 const queryClient = new QueryClient();
 const money = (n?: number | null) => (typeof n === 'number' ? `₹${n.toLocaleString('en-IN')}` : '—');
@@ -2281,20 +2282,26 @@ function AppRouter() {
       'Explore solar panels, inverters, cables, structures, and other solar equipment on the ENRG marketplace.';
     seo.path = '/marketplace';
   } else if (
-    location === '/register' ||
-    location === '/signup' ||
-    location === '/signin' ||
-    location === '/quote' ||
-    location === '/dashboard' ||
-    location.startsWith('/customer/') ||
-    location.startsWith('/company/') ||
-    location.startsWith('/admin/')
-  ) {
-    seo.title = 'ENRG';
-    seo.description = 'ENRG solar platform.';
-    seo.path = location;
-    seo.noindex = true;
-  } else if (location !== '/') {
+  location === '/register' ||
+  location === '/signup' ||
+  location === '/signin' ||
+  location === '/quote' ||
+  location === '/dashboard' ||
+  location.startsWith('/customer/') ||
+  location.startsWith('/company/') ||
+  location.startsWith('/admin/')
+) {
+  seo.title = 'ENRG';
+  seo.description = 'ENRG solar platform.';
+  seo.path = location;
+  seo.noindex = true;
+} else if (location.startsWith('/articles/')) {
+  seo.title = 'ENRG Solar Guides';
+  seo.description =
+    'Helpful solar guides covering solar systems, solar panels, installation, pricing, and maintenance in India.';
+  seo.path = location;
+  seo.noindex = false;
+} else if (location !== '/') {
     seo.title = 'ENRG';
     seo.description = 'ENRG solar platform.';
     seo.path = location;
@@ -2314,6 +2321,7 @@ function AppRouter() {
         <Route path="/" component={LandingPage} />
         <Route path="/companies" component={CompaniesPage} />
         <Route path="/marketplace" component={Marketplace} />
+        <Route path="/articles/:slug" component={Articles} />
         <Route
           path="/quote"
           component={() => (
