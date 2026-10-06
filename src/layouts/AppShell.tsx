@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
 import { BarChart3, Building2, ClipboardList, FileText, Home as HomeIcon, Menu, PanelLeft, ShoppingBag, Users, X, Zap } from 'lucide-react';
 import { useHealthCheck } from '@workspace/api-client-react';
 import { getAccountPath, useAuth } from '@/auth/auth-context';
@@ -23,6 +24,12 @@ const adminNav = [
   { href: '/admin/dashboard', label: 'Admin overview', icon: PanelLeft },
   { href: '/admin/management', label: 'Management', icon: Users },
 ];
+const socialLinks = {
+  instagram: (import.meta as any).env?.VITE_INSTAGRAM_URL || undefined,
+  facebook: (import.meta as any).env?.VITE_FACEBOOK_URL || undefined,
+  linkedin: (import.meta as any).env?.VITE_LINKEDIN_URL || undefined,
+  x: (import.meta as any).env?.VITE_X_PROFILE_URL || undefined,
+};
 
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -136,16 +143,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link href="/signup" data-testid="link-footer-company">
                 For companies
               </Link>
+              <Link href="/terms-and-conditions">Terms &amp; Conditions</Link>
+              <Link href="/privacy-policy">Privacy Policy</Link>
             </div>
             <nav aria-label="Social media" className="flex items-center gap-2">
-              <a href="https://www.instagram.com/enrg_solar_india" target="_blank" rel="noopener noreferrer" aria-label="ENRG Solar India on Instagram" title="Instagram" className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white">
+              <a href={socialLinks.instagram} target={socialLinks.instagram ? '_blank' : undefined} rel={socialLinks.instagram ? 'noopener noreferrer' : undefined} aria-label="ENRG Solar India on Instagram" title="Instagram" aria-disabled={!socialLinks.instagram} className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60">
                 <FaInstagram aria-hidden="true" size={18} />
               </a>
-              <a href="https://www.facebook.com/share/1Ey5Aa7LFC/" target="_blank" rel="noopener noreferrer" aria-label="ENRG Solar India on Facebook" title="Facebook" className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white">
+              <a href={socialLinks.facebook} target={socialLinks.facebook ? '_blank' : undefined} rel={socialLinks.facebook ? 'noopener noreferrer' : undefined} aria-label="ENRG Solar India on Facebook" title="Facebook" aria-disabled={!socialLinks.facebook} className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60">
                 <FaFacebookF aria-hidden="true" size={16} />
               </a>
-              <a href="https://www.linkedin.com/company/enrg-solar-india/" target="_blank" rel="noopener noreferrer" aria-label="ENRG Solar India on LinkedIn" title="LinkedIn" className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white">
+              <a href={socialLinks.linkedin} target={socialLinks.linkedin ? '_blank' : undefined} rel={socialLinks.linkedin ? 'noopener noreferrer' : undefined} aria-label="ENRG Solar India on LinkedIn" title="LinkedIn" aria-disabled={!socialLinks.linkedin} className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60">
                 <FaLinkedinIn aria-hidden="true" size={18} />
+              </a>
+              <a href={socialLinks.x} target={socialLinks.x ? '_blank' : undefined} rel={socialLinks.x ? 'noopener noreferrer' : undefined} aria-label="ENRG on X" title={socialLinks.x ? 'X' : 'X profile coming soon'} aria-disabled={!socialLinks.x} className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/50 hover:text-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60">
+                <FaXTwitter aria-hidden="true" size={17} />
               </a>
             </nav>
           </div>

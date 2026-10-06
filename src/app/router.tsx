@@ -25,6 +25,8 @@ const CompanyLeads = lazy(() => import('@/pages/company').then((module) => ({ de
 const CompanyDashboard = lazy(() => import('@/pages/company').then((module) => ({ default: module.CompanyDashboard })));
 const AdminDashboard = lazy(() => import('@/pages/admin').then((module) => ({ default: module.AdminDashboard })));
 const AdminManagement = lazy(() => import('@/pages/admin').then((module) => ({ default: module.AdminManagement })));
+const TermsAndConditions = lazy(() => import('@/pages/policies').then((module) => ({ default: module.TermsAndConditions })));
+const PrivacyPolicy = lazy(() => import('@/pages/policies').then((module) => ({ default: module.PrivacyPolicy })));
 function RouteLoading() {
   return <PageLoadingState />;
 }
@@ -88,6 +90,8 @@ function AppRoutes() {
             <Route path="/register" component={Register} />
             <Route path="/signup" component={Signup} />
             <Route path="/signin" component={Signin} />
+            <Route path="/terms-and-conditions" component={TermsAndConditions} />
+            <Route path="/privacy-policy" component={PrivacyPolicy} />
             <Route path="/dashboard" component={() => <ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
             <Route path="/company/profile/setup" component={() => <ProtectedRoute><CompanyProfileSetup /></ProtectedRoute>} />
             <Route path="/company/profile" component={() => <ProtectedRoute><CompanyProfile /></ProtectedRoute>} />

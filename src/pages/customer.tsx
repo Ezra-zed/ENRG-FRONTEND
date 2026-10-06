@@ -5,12 +5,13 @@ import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
 import { ArrowRight, CalendarDays, Check, CircleDollarSign, Clock3, Loader2, RefreshCw, Send, ShieldCheck, Upload, UserRound, Users } from 'lucide-react';
-import { getListCustomersQueryKey, getListProjectQuotesQueryKey, useRegisterCustomer, useRequestProjectQuote, useListProjectQuotes, useMyProjectTracking, PropertyType, type CustomerProjectTracking } from '@workspace/api-client-react';
+import { getListCustomersQueryKey, getListProjectQuotesQueryKey, useRegisterCustomer, useRequestProjectQuote, useListProjectQuotes, useMyProjectTracking, useRequestMaintenance, useMaintenanceReminder, PropertyType, type CustomerProjectTracking } from '@workspace/api-client-react';
 import { SelectItem as DropdownItem } from '@/components/ui/select';
 import { Button, Field, SelectField } from '@/components/form-controls';
 import { QueryState, StatusPill } from '@/components/feedback';
 import { PageHeader } from '@/components/PageHeader';
 import { PaymentCheckout } from '@/components/payments/PaymentCheckout';
+import { LocationCombobox } from '@/components/LocationCombobox';
 
 function ProjectQuotesAndPayment({ project }: { project: CustomerProjectTracking }) {
   const quotes = useListProjectQuotes(project.projectId);
@@ -19,6 +20,35 @@ function ProjectQuotesAndPayment({ project }: { project: CustomerProjectTracking
   const accepted = (quotes.data || []).filter((quote) => quote.status === 'accepted');
   if (accepted.length === 0) return null;
   return <div className="mt-6 border-t border-border pt-5"><h4 className="flex items-center gap-2 text-sm font-bold"><CircleDollarSign size={16} className="text-accent" />Accepted quote{accepted.length === 1 ? '' : 's'}</h4>{accepted.map((quote) => <PaymentCheckout key={quote.id} projectId={project.projectId} quote={quote} />)}</div>;
+}
+
+const ORDER_STAGES = [
+  ['order-placed', 'Order Placed'], ['order-confirmed', 'Order Confirmed'], ['installer-assigned', 'Installer Assigned'],
+  ['site-survey', 'Site Survey'], ['installation-scheduled', 'Installation Scheduled'],
+  ['installation-in-progress', 'Installation In Progress'], ['installation-completed', 'Installation Completed'],
+] as const;
+
+function OrderProgressTracker({ project }: { project: CustomerProjectTracking }) {
+  const maintenance = useRequestMaintenance();
+  const reminder = useMaintenanceReminder(project.projectId, project.orderStage === 'installation-completed');
+  const [requested, setRequested] = useState(false);
+  const stageIndex = Math.max(0, ORDER_STAGES.findIndex(([status]) => status === project.orderStage));
+  const events = project.orderHistory || [];
+  return <section className="mt-6 rounded-2xl border border-border bg-background/70 p-4 sm:p-5" aria-label="Solar order progress">
+    <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-widest text-accent">Order journey</p><h4 className="mt-1 font-display text-lg font-bold">{project.orderStageLabel || 'Order Placed'}</h4></div><span className="text-sm font-bold text-accent">{project.orderProgressPercent || 0}%</span></div>
+    <div className="mt-5 hidden grid-cols-7 gap-1 sm:grid">
+      {ORDER_STAGES.map(([status, label], index) => <div key={status} className="relative min-w-0 text-center">
+        {index < ORDER_STAGES.length - 1 && <span className={`absolute left-1/2 right-[-50%] top-[10px] h-0.5 ${index < stageIndex ? 'bg-primary' : 'bg-border'}`} />}
+        <span className={`relative mx-auto grid size-5 place-items-center rounded-full border-2 ${index < stageIndex ? 'border-primary bg-primary text-white' : index === stageIndex ? 'border-primary bg-card ring-4 ring-primary/10' : 'border-border bg-card'}`}>{index < stageIndex && <Check size={12} />}</span>
+        <span className={`mx-auto mt-2 block max-w-[7rem] text-[10px] leading-4 ${index <= stageIndex ? 'font-bold text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+      </div>)}
+    </div>
+    <ol className="mt-4 grid gap-2 sm:hidden">
+      {ORDER_STAGES.map(([status, label], index) => <li key={status} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${index === stageIndex ? 'bg-[#dfece0] font-bold text-accent' : index < stageIndex ? 'text-foreground' : 'text-muted-foreground'}`}><span className={`grid size-5 shrink-0 place-items-center rounded-full ${index < stageIndex ? 'bg-primary text-white' : index === stageIndex ? 'border-2 border-primary' : 'border border-border'}`}>{index < stageIndex && <Check size={12} />}</span>{label}</li>)}
+    </ol>
+    {events.length > 0 && <div className="mt-4 border-t border-border pt-3"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Latest update</p><p className="mt-1 text-sm">{events.at(-1)?.message || project.orderStageLabel}</p></div>}
+    {project.orderStage === 'installation-completed' && <div className="mt-4 border-t border-border pt-4"><p className="text-sm text-muted-foreground">Installation completed {project.installationCompletedAt ? date(project.installationCompletedAt) : ''}. Need cleaning or a system check?</p>{reminder.data?.reminder && <p className="mt-2 text-xs text-muted-foreground">Maintenance reminder {reminder.data.reminder.status === 'sent' ? `sent ${reminder.data.reminder.sentAt ? date(reminder.data.reminder.sentAt) : ''}` : `scheduled for ${reminder.data.reminder.scheduledAt ? date(reminder.data.reminder.scheduledAt) : 'later'}`}.</p>}<button type="button" disabled={maintenance.isPending || requested} onClick={() => maintenance.mutate({ projectId: project.projectId }, { onSuccess: () => setRequested(true) })} className="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-bold text-accent-foreground disabled:opacity-60">{requested ? 'Maintenance requested' : maintenance.isPending ? 'Sending request…' : 'Request Maintenance'} <ArrowRight size={15} /></button>{maintenance.error && <p role="alert" className="mt-2 text-sm text-[#8d3f34]">We couldn’t send your request. Please try again.</p>}</div>}
+  </section>;
 }
 
 
@@ -211,7 +241,7 @@ export function CustomerDashboard() {
         <QueryState loading={projectsQuery.isLoading} error={projectsQuery.error} onRetry={() => projectsQuery.refetch()} empty={!projectsQuery.isLoading && !projectsQuery.error && (projectsQuery.data?.items || []).length === 0} emptyText="Your project updates will appear here.">
           <div className="grid gap-4">{(projectsQuery.data?.items || []).map((project) => <article key={project.projectId} data-testid={`card-project-${project.projectId}`} className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><StatusPill status={project.status} /><span className="text-sm text-muted-foreground">{project.location || 'Location pending'} · {project.propertyType || 'Residential'}</span></div><h3 className="mt-3 font-display text-xl font-bold">{project.statusLabel}</h3><p className="mt-1 text-sm text-muted-foreground">Project reference {project.projectId}</p></div><div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:min-w-[300px]"><div><p className="text-xs text-muted-foreground">Vendor</p><p className="mt-1 font-semibold">{project.vendor?.name || 'Matching with companies'}</p></div><div><p className="text-xs text-muted-foreground">Expected completion</p><p className="mt-1 flex items-center gap-1 font-semibold"><CalendarDays size={14} />{project.expectedCompletionAt ? date(project.expectedCompletionAt) : 'Not scheduled'}</p></div></div></div>
-            <div className="mt-6"><div className="mb-2 flex items-center justify-between text-xs font-semibold"><span>Project progress</span><span>{project.progressPercent}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.min(100, Math.max(0, project.progressPercent))}%` }} /></div></div>
+            <OrderProgressTracker project={project} />
             <ProjectQuotesAndPayment project={project} />
             <div className="mt-6 border-t border-border pt-5"><h4 className="mb-4 flex items-center gap-2 text-sm font-bold"><Clock3 size={16} className="text-accent" />Timeline and updates</h4>{project.history?.length ? <ol className="grid gap-0">{[...project.history].reverse().map((event, index) => <li key={event.id || `${event.status}-${index}`} className="relative flex gap-3 pb-4 last:pb-0"><span className={`relative z-10 mt-1 grid size-5 shrink-0 place-items-center rounded-full ${index === 0 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>{index === 0 ? <Check size={12} /> : <span className="size-1.5 rounded-full bg-current" />}</span>{index < project.history.length - 1 && <span className="absolute left-[9px] top-6 h-[calc(100%-1rem)] w-px bg-border" />}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{event.statusLabel}</p><time className="text-xs text-muted-foreground">{date(event.createdAt)}</time></div>{event.message && <p className="mt-1 text-sm leading-5 text-muted-foreground">{event.message}</p>}{event.important && <span className="mt-2 inline-block rounded-full bg-[#fff0c9] px-2 py-1 text-[10px] font-bold text-[#765300]">Important update</span>}</div></li>)}</ol> : <p className="text-sm text-muted-foreground">Project created {date(project.createdAt)}. Updates will appear here.</p>}</div>
           </article>)}</div>
@@ -225,6 +255,7 @@ export function Register() {
   const mutation = useRegisterCustomer();
   const client = useQueryClient();
   const [done, setDone] = useState(false);
+  const [acceptPolicies, setAcceptPolicies] = useState(false);
   const [form, setForm] = useState({
     name: '',
     mobile: '',
@@ -242,6 +273,7 @@ export function Register() {
       {
         data: {
           ...form,
+          acceptPolicies,
           monthlyBillAmount: Number(form.monthlyBillAmount) || undefined,
           propertyType: form.propertyType as PropertyType,
         },
@@ -276,7 +308,7 @@ export function Register() {
         <Field required autoComplete="name" label="Full name" placeholder="Your name" value={form.name} onChange={update('name')} data-testid="input-register-name" />
         <Field required autoComplete="tel" inputMode="tel" type="tel" label="Mobile number" placeholder="98765 43210" value={form.mobile} onChange={update('mobile')} data-testid="input-register-mobile" />
         <Field autoComplete="email" type="email" label="Email address" placeholder="you@example.com" value={form.email} onChange={update('email')} data-testid="input-register-email" />
-        <Field label="City or location" placeholder="Pune" value={form.location} onChange={update('location')} data-testid="input-register-location" />
+        <label className="grid gap-1.5 text-sm font-medium text-foreground"><span>City or location</span><LocationCombobox value={form.location} onValueChange={(value) => setForm((current) => ({ ...current, location: value }))} placeholder="Choose or search a city" ariaLabel="City or location" testId="input-register-location" /></label>
         <Field inputMode="numeric" autoComplete="postal-code" label="Pincode" placeholder="411001" value={form.pincode} onChange={update('pincode')} data-testid="input-register-pincode" />
         <SelectField label="Property type" value={form.propertyType} onValueChange={(value) => setForm((current) => ({ ...current, propertyType: value }))} data-testid="select-register-property">
           <DropdownItem value="residential">Residential</DropdownItem>
@@ -286,6 +318,10 @@ export function Register() {
         </SelectField>
         <Field type="number" label="Monthly bill" placeholder="4500" value={form.monthlyBillAmount} onChange={update('monthlyBillAmount')} data-testid="input-register-bill" />
         <Field label="System size, if known" placeholder="2–4 kW" value={form.requiredSystemSize} onChange={update('requiredSystemSize')} data-testid="input-register-size" />
+        <label className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-border bg-card p-3 text-sm leading-5 text-muted-foreground">
+          <input required type="checkbox" checked={acceptPolicies} onChange={(event) => setAcceptPolicies(event.target.checked)} className="mt-1 size-4 accent-[#1f584d]" data-testid="checkbox-register-accept-policies" />
+          <span>I agree to ENRG’s <Link href="/terms-and-conditions" className="font-semibold text-accent underline">Terms &amp; Conditions</Link> and <Link href="/privacy-policy" className="font-semibold text-accent underline">Privacy Policy</Link>.</span>
+        </label>
         <div className="sm:col-span-2">
           {mutation.error && (
             <p data-testid="status-register-error" className="mb-4 rounded-xl bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">

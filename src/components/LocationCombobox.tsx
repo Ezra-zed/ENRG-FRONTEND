@@ -4,12 +4,20 @@ import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
-const solarServiceLocations = [
-  'Ahmedabad, Gujarat', 'Bengaluru, Karnataka', 'Bhopal, Madhya Pradesh', 'Chandigarh', 'Chennai, Tamil Nadu',
-  'Coimbatore, Tamil Nadu', 'Delhi', 'Hyderabad, Telangana', 'Indore, Madhya Pradesh', 'Jaipur, Rajasthan',
-  'Kochi, Kerala', 'Kolkata, West Bengal', 'Lucknow, Uttar Pradesh', 'Mumbai, Maharashtra', 'Nagpur, Maharashtra',
-  'Nashik, Maharashtra', 'Pune, Maharashtra', 'Surat, Gujarat', 'Thiruvananthapuram, Kerala', 'Visakhapatnam, Andhra Pradesh',
-];
+const indianCities = [
+  'Asansol', 'Baharampur', 'Bankura', 'Bardhaman', 'Bidhannagar',
+  'Bishnupur', 'Bolpur', 'Cooch Behar', 'Darjeeling', 'Durgapur',
+  'Haldia', 'Howrah', 'Jalpaiguri', 'Kalyani', 'Kharagpur',
+  'Kolkata', 'Krishnanagar', 'Malda', 'Midnapore', 'Nabadwip',
+  'New Town', 'Raiganj', 'Ranaghat', 'Siliguri', 'Suri',
+  'Agartala', 'Ahmedabad', 'Bengaluru', 'Bhopal', 'Bhubaneswar',
+  'Chandigarh', 'Chennai', 'Dehradun', 'Delhi', 'Dispur',
+  'Gandhinagar', 'Gangtok', 'Guwahati', 'Hyderabad', 'Imphal',
+  'Jaipur', 'Jammu', 'Kochi', 'Lucknow', 'Mumbai',
+  'Panaji', 'Patna', 'Pune', 'Raipur', 'Ranchi',
+  'Shillong', 'Shimla', 'Srinagar', 'Thiruvananthapuram', 'Vijayawada',
+  'Visakhapatnam',
+].sort((a, b) => a.localeCompare(b));
 
 export function LocationCombobox({ value, onValueChange, placeholder, ariaLabel, testId, triggerRef, invalid = false, required = false }: { value: string; onValueChange: (value: string) => void; placeholder: string; ariaLabel: string; testId?: string; triggerRef?: React.Ref<HTMLButtonElement>; invalid?: boolean; required?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -29,18 +37,18 @@ export function LocationCombobox({ value, onValueChange, placeholder, ariaLabel,
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={6} collisionPadding={8} className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] rounded-[13px] border-border bg-card p-1.5 shadow-xl shadow-black/10">
         <Command>
-          <CommandInput autoComplete="off" value={search} onValueChange={(next) => { setSearch(next); onValueChange(next); }} placeholder="Search a city or region" aria-label={`Search ${ariaLabel.toLowerCase()}`} />
+          <CommandInput autoComplete="off" value={search} onValueChange={(next) => { setSearch(next); onValueChange(next); }} placeholder="Search a city" aria-label={`Search ${ariaLabel.toLowerCase()}`} />
           <CommandList className="max-h-60 overscroll-contain">
-            <CommandEmpty>Type a city or region to use it.</CommandEmpty>
+            <CommandEmpty>Type a city to use it.</CommandEmpty>
             <CommandItem value={`clear-location-filter ${search}`} onSelect={() => chooseLocation('')} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground data-[selected=true]:bg-accent/10 data-[selected=true]:text-accent">
               Clear location filter
             </CommandItem>
-            {search.trim() && !solarServiceLocations.some((location) => location.toLocaleLowerCase() === search.trim().toLocaleLowerCase()) && (
+            {search.trim() && !indianCities.some((location) => location.toLocaleLowerCase() === search.trim().toLocaleLowerCase()) && (
               <CommandItem value={`use-location-${search}`} onSelect={() => chooseLocation(search.trim())} className="rounded-lg px-3 py-2.5 text-sm data-[selected=true]:bg-accent/10 data-[selected=true]:text-accent">
                 Use “{search.trim()}”
               </CommandItem>
             )}
-            {solarServiceLocations.map((location) => (
+            {indianCities.map((location) => (
               <CommandItem key={location} value={location} onSelect={() => chooseLocation(location)} className="rounded-lg px-3 py-2.5 text-sm data-[selected=true]:bg-accent/10 data-[selected=true]:text-accent">
                 {location}
               </CommandItem>

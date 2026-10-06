@@ -15,6 +15,8 @@ export function Signup() {
   const [location] = useLocation();
   const [role, setRole] = useState<SignupInputRole>('user');
   const [authConfirmError, setAuthConfirmError] = useState<string | null>(null);
+  const [acceptPolicies, setAcceptPolicies] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -33,6 +35,7 @@ export function Signup() {
         data: {
           ...form,
           role,
+          acceptPolicies,
           ...(role === 'user'
             ? {}
             : {
@@ -93,6 +96,10 @@ export function Signup() {
             <Field required label="License number" placeholder="Registration number" value={form.licenseNumber} onChange={update('licenseNumber')} data-testid="input-signup-license" />
           </>
         )}
+        <label className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-border bg-card p-3 text-sm leading-5 text-muted-foreground">
+          <input required type="checkbox" checked={acceptPolicies} onChange={(event) => setAcceptPolicies(event.target.checked)} className="mt-1 size-4 accent-[#1f584d]" data-testid="checkbox-accept-policies" />
+          <span>I agree to ENRG’s <Link href="/terms-and-conditions" className="font-semibold text-accent underline">Terms &amp; Conditions</Link> and <Link href="/privacy-policy" className="font-semibold text-accent underline">Privacy Policy</Link>.</span>
+        </label>
         <div className="sm:col-span-2">
           {mutation.error && (
             <p data-testid="status-signup-error" className="mb-4 rounded-xl bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
@@ -104,6 +111,7 @@ export function Signup() {
               {authConfirmError} <Link href="/signin" className="font-bold underline">Sign in</Link>
             </p>
           )}
+          {policyError && <p role="alert" className="mb-4 text-sm text-[#8d3f34]">{policyError}</p>}
           <Button type="submit" data-testid="button-submit-signup" disabled={mutation.isPending} className="w-full">
             {mutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Create my account
           </Button>
@@ -117,7 +125,10 @@ export function Signup() {
               <button
                 type="button"
                 data-testid="button-signup-google"
-                onClick={() => window.location.assign(`${API_BASE_URL}/auth/google`)}
+                onClick={() => {
+                  if (!acceptPolicies) { setPolicyError('Accept the Terms & Conditions and Privacy Policy to continue.'); return; }
+                  window.location.assign(`${API_BASE_URL}/auth/google?acceptPolicies=true`);
+                }}
                 className="flex w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 py-3 text-sm font-bold text-foreground transition hover:bg-secondary"
               >
                 <FcGoogle size={20} />
@@ -341,11 +352,11 @@ export function Signin() {
                 Sign in was not completed. Check your details and try again.
               </p>
             )}
-            {authConfirmError && (
+          {authConfirmError && (
               <p role="alert" data-testid="status-signin-auth-error" className="rounded-xl border border-[#e4b5aa] bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
                 {authConfirmError}
               </p>
-            )}
+          )}
             <Button type="submit" data-testid="button-submit-signin" disabled={mutation.isPending} className="w-full py-3.5">
               {mutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <LogIn size={17} />}
               {mutation.isPending ? 'Signing you in...' : 'Sign in securely'}

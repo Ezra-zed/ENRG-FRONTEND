@@ -63,6 +63,11 @@ export type CustomerProjectTracking = {
   location?: string;
   propertyType?: string;
   createdAt?: string;
+  orderStage?: string;
+  orderStageLabel?: string;
+  orderProgressPercent?: number;
+  orderHistory?: Array<{ id?: string; status: string; statusLabel: string; message?: string | null; createdAt?: string }>;
+  installationCompletedAt?: string | null;
 };
 
 export type Customer = {
@@ -142,6 +147,8 @@ export const getListCompaniesQueryKey = (params: Record<string, unknown>) => ['c
 export const getListProjectQuotesQueryKey = (id: string) => ['project-quotes', id];
 export const getPublicCompanyQueryKey = (id: string) => ['public-company', id];
 export const getMyProjectTrackingQueryKey = () => ['my-project-tracking'];
+export const getVendorProjectTrackingQueryKey = () => ['vendor-project-tracking'];
+export const getVendorMaintenanceRequestsQueryKey = () => ['vendor-maintenance-requests'];
 export const getListCustomersQueryKey = (params: Record<string, unknown>) => ['customers', params];
 export const getGetCompanyMetricsQueryKey = () => ['company-metrics'];
 export const getListCompanyLeadsQueryKey = (params: Record<string, unknown>) => ['company-leads', params];
@@ -436,6 +443,49 @@ export function useMyProjectTracking() {
   return useQuery({
     queryKey: getMyProjectTrackingQueryKey(),
     queryFn: () => apiFetch<{ items: CustomerProjectTracking[] }>('/api/projects/mine/tracking'),
+  });
+}
+
+export function useVendorProjectTracking() {
+  return useQuery({
+    queryKey: getVendorProjectTrackingQueryKey(),
+    queryFn: () => apiFetch<{ items: CustomerProjectTracking[] }>('/api/projects/vendor/tracking'),
+  });
+}
+
+export function useUpdateOrderTracking() {
+  return useMutation({
+    mutationFn: ({ projectId, status, message }: { projectId: string; status: string; message?: string }) =>
+      apiFetch<Record<string, any>>(`/api/projects/${encodeURIComponent(projectId)}/order-tracking`, { method: 'PATCH', json: { status, message } }),
+  });
+}
+
+export function useRequestMaintenance() {
+  return useMutation({
+    mutationFn: ({ projectId, message }: { projectId: string; message?: string }) =>
+      apiFetch<Record<string, any>>(`/api/projects/${encodeURIComponent(projectId)}/maintenance-requests`, { method: 'POST', json: { message } }),
+  });
+}
+
+export function useMaintenanceReminder(projectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['maintenance-reminder', projectId],
+    enabled: Boolean(projectId && enabled),
+    queryFn: () => apiFetch<{ reminder: { status: string; scheduledAt?: string; sentAt?: string } | null }>(`/api/projects/${encodeURIComponent(projectId)}/maintenance-reminder`),
+  });
+}
+
+export function useVendorMaintenanceRequests() {
+  return useQuery({
+    queryKey: getVendorMaintenanceRequestsQueryKey(),
+    queryFn: () => apiFetch<{ items: Array<{ id: string; status: string; message: string; createdAt?: string; projectId?: string; location?: string; customerName: string }> }>('/api/projects/vendor/maintenance-requests'),
+  });
+}
+
+export function useUpdateMaintenanceRequest() {
+  return useMutation({
+    mutationFn: ({ requestId, status }: { requestId: string; status: 'in-progress' | 'resolved' }) =>
+      apiFetch<Record<string, any>>(`/api/projects/vendor/maintenance-requests/${encodeURIComponent(requestId)}`, { method: 'PATCH', json: { status } }),
   });
 }
 

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowRight, Check, ClipboardList, FileText, Loader2, Plus, Send, Sparkles, Users, X } from 'lucide-react';
-import { getGetCompanyMetricsQueryKey, getListCompanyLeadsQueryKey, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, LeadStatus, type Lead } from '@workspace/api-client-react';
+import { getGetCompanyMetricsQueryKey, getListCompanyLeadsQueryKey, getVendorProjectTrackingQueryKey, getVendorMaintenanceRequestsQueryKey, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useVendorProjectTracking, useUpdateOrderTracking, useVendorMaintenanceRequests, useUpdateMaintenanceRequest, LeadStatus, type Lead, type CustomerProjectTracking } from '@workspace/api-client-react';
 import { SelectItem as DropdownItem } from '@/components/ui/select';
 import { Button, Field, EnrgSelect } from '@/components/form-controls';
 import { PageHeader } from '@/components/PageHeader';
@@ -307,10 +307,14 @@ export function CompanyDashboardLegacy() {
 }
 
 export function CompanyDashboard() {
+  const { user } = useAuth();
   const query = useGetCompanyMetrics({
     query: { queryKey: getGetCompanyMetricsQueryKey() },
   });
   const m = query.data;
+  const projectsQuery = useVendorProjectTracking();
+  const trackingUpdate = useUpdateOrderTracking();
+  const queryClient = useQueryClient();
   const metrics = [
     { label: 'Total leads', value: m?.totalLeads ?? 0, icon: Users },
     {
@@ -348,6 +352,16 @@ export function CompanyDashboard() {
             </div>
           ))}
         </div>
+        {user?.role === 'install-co' && <>
+        <section className="mt-8 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+          <div className="mb-4"><p className="text-xs font-bold uppercase tracking-widest text-accent">Order delivery</p><h2 className="mt-1 font-display text-2xl font-bold">Assigned installation projects</h2><p className="mt-1 text-sm text-muted-foreground">Advance one authorized milestone at a time.</p></div>
+          <QueryState loading={projectsQuery.isLoading} error={projectsQuery.error} onRetry={() => projectsQuery.refetch()} empty={!projectsQuery.isLoading && !projectsQuery.error && !(projectsQuery.data?.items || []).length} emptyText="Accepted projects will appear here.">
+            <div className="grid gap-3">{(projectsQuery.data?.items || []).map((project) => <InstallerProjectCard key={project.projectId} project={project} busy={trackingUpdate.isPending} onAdvance={(status) => trackingUpdate.mutate({ projectId: project.projectId, status }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getVendorProjectTrackingQueryKey() }) })} />)}</div>
+          </QueryState>
+          {trackingUpdate.error && <p role="alert" className="mt-3 text-sm text-[#8d3f34]">The project could not be updated. Reload and try again.</p>}
+        </section>
+        <MaintenanceRequests />
+        </>}
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
           <div className="rounded-3xl bg-accent p-7 text-accent-foreground">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Pipeline value</p>
@@ -359,6 +373,36 @@ export function CompanyDashboard() {
       </QueryState>
     </CompanyShell>
   );
+}
+
+function MaintenanceRequests() {
+  const queryClient = useQueryClient();
+  const query = useVendorMaintenanceRequests();
+  const mutation = useUpdateMaintenanceRequest();
+  const items = query.data?.items || [];
+  return <section className="mt-6 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+    <div className="mb-4"><p className="text-xs font-bold uppercase tracking-widest text-accent">Aftercare</p><h2 className="mt-1 font-display text-2xl font-bold">Maintenance requests</h2></div>
+    <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()} empty={!query.isLoading && !query.error && !items.length} emptyText="Customer maintenance requests will appear here.">
+      <div className="grid gap-3">{items.map((item) => <article key={item.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{item.customerName} · {item.location || 'Project'}</p><p className="mt-1 text-sm text-muted-foreground">{item.message || 'Cleaning or maintenance requested'} · {date(item.createdAt)}</p><p className="mt-1 text-xs font-semibold capitalize text-accent">{item.status.replaceAll('-', ' ')}</p></div>{item.status !== 'resolved' && <Button type="button" disabled={mutation.isPending} variant={item.status === 'open' ? 'quiet' : 'primary'} onClick={() => mutation.mutate({ requestId: item.id, status: item.status === 'open' ? 'in-progress' : 'resolved' }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getVendorMaintenanceRequestsQueryKey() }) })}>{item.status === 'open' ? 'Start request' : 'Mark resolved'}</Button>}</article>)}</div>
+    </QueryState>
+    {mutation.error && <p role="alert" className="mt-3 text-sm text-[#8d3f34]">We couldn’t update that request. Please reload and try again.</p>}
+  </section>;
+}
+
+const installationStages = [
+  'order-placed', 'order-confirmed', 'installer-assigned', 'site-survey',
+  'installation-scheduled', 'installation-in-progress', 'installation-completed',
+] as const;
+const installationLabels: Record<string, string> = {
+  'site-survey': 'Site Survey', 'installation-scheduled': 'Installation Scheduled',
+  'installation-in-progress': 'Installation In Progress', 'installation-completed': 'Installation Completed',
+};
+function InstallerProjectCard({ project, busy, onAdvance }: { project: CustomerProjectTracking; busy: boolean; onAdvance: (status: string) => void }) {
+  const next = installationStages[installationStages.indexOf((project.orderStage || 'order-placed') as typeof installationStages[number]) + 1];
+  return <article className="flex flex-col gap-3 rounded-2xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div><p className="font-semibold">{project.location || 'Solar project'}</p><p className="mt-1 text-sm text-muted-foreground">{project.orderStageLabel} · {project.orderProgressPercent || 0}% complete</p><p className="mt-1 text-xs text-muted-foreground">Ref {project.projectId}</p></div>
+    {next ? <Button type="button" disabled={busy} onClick={() => onAdvance(next)} className="min-h-10 self-start sm:self-auto">{busy ? 'Saving…' : `Mark ${installationLabels[next]} complete`} <ArrowRight size={15} /></Button> : <span className="rounded-full bg-[#dfece0] px-3 py-2 text-xs font-bold text-accent">Installation complete</span>}
+  </article>;
 }
 
 export function CompanyLeads() {
