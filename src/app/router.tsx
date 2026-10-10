@@ -2,6 +2,7 @@ import { lazy, Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { Route, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { SEO } from '@/components/SEO';
+import articles from "@/pages/articles";
 import NotFound from '@/pages/not-found';
 import { AppShell } from '@/layouts/AppShell';
 import { DashboardRedirect, ProtectedRoute } from '@/app/route-guards';
@@ -10,6 +11,7 @@ import { PageLoadingState } from '@/components/PageLoadingState';
 
 
 const Marketplace = lazy(() => import('@/pages/marketplace').then((module) => ({ default: module.Marketplace })));
+const Articles = lazy(() => import('@/pages/articles'));
 const CompaniesPage = lazy(() => import('@/pages/companies').then((module) => ({ default: module.CompaniesPage })));
 const CompanyDetailPage = lazy(() => import('@/pages/companies').then((module) => ({ default: module.CompanyDetailPage })));
 const EnergyEstimatorPage = lazy(() => import('@/pages/estimator').then((module) => ({ default: module.EnergyEstimatorPage })));
@@ -51,7 +53,12 @@ function AppRoutes() {
     noindex: false,
   };
 
-  if (location === '/companies') {
+  if (location === '/estimator') {
+  seo.title = 'Solar Calculator India | Estimate Solar Costs and Savings | ENRG';
+  seo.description = 'Estimate your solar system size, panel requirements, installation price range, electricity savings, and energy generation with ENRG’s solar calculator.';
+  seo.path = '/estimator';
+  seo.noindex = false;
+} else if (location === '/companies') {
     seo.title = 'Solar Companies | ENRG';
     seo.description = 'Find and compare solar installers and solar providers through ENRG.';
     seo.path = '/companies';
@@ -76,7 +83,14 @@ function AppRoutes() {
 
   return (
     <AppShell>
-      <SEO title={seo.title} description={seo.description} path={seo.path} noindex={seo.noindex} />
+      {!location.startsWith('/articles/') && (
+  <SEO
+    title={seo.title}
+    description={seo.description}
+    path={seo.path}
+    noindex={seo.noindex}
+  />
+)}
       <div className={animateRouteChange ? 'route-transition-enter' : undefined}>
         <Suspense fallback={<RouteLoading />}>
           <Switch>
@@ -85,6 +99,7 @@ function AppRoutes() {
             <Route path="/companies/:companyId" component={CompanyDetailPage} />
             <Route path="/estimator" component={EnergyEstimatorPage} />
             <Route path="/marketplace" component={Marketplace} />
+            <Route path="/articles/:slug" component={Articles} />
             <Route path="/quote" component={() => <ProtectedRoute><QuotePage /></ProtectedRoute>} />
             <Route path="/customer/dashboard" component={() => <ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
             <Route path="/register" component={Register} />
