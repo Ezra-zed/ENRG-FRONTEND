@@ -13,7 +13,7 @@ export function StatusPill({ status }: { status?: string }) {
   );
 }
 
-export function QueryState({ loading, error, onRetry, children, empty = false, emptyText = 'Nothing to show yet.' }: { loading?: boolean; error?: unknown; onRetry?: () => void; children: React.ReactNode; empty?: boolean; emptyText?: string }) {
+export function QueryState({ loading, error, onRetry, children, empty = false, emptyText = 'Nothing to show yet.', errorContent }: { loading?: boolean; error?: unknown; onRetry?: () => void; children: React.ReactNode; empty?: boolean; emptyText?: string; errorContent?: React.ReactNode }) {
   if (loading)
     return (
       <div className="grid gap-3" role="status" aria-live="polite" aria-label="Loading content">
@@ -22,6 +22,8 @@ export function QueryState({ loading, error, onRetry, children, empty = false, e
         ))}
       </div>
     );
+  if (errorContent && error)
+    return <>{errorContent}</>;
   if (error)
     return (
       <div className="rounded-2xl border border-[#e4b5aa] bg-[#fff2ef] p-6 text-center">

@@ -198,6 +198,16 @@ type ApiEnvelope<T> = {
   error?: unknown;
 };
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 type RequestOptions = {
   method?: string;
   json?: unknown;      // JSON body — serialised & sent with Content-Type: application/json
@@ -209,7 +219,7 @@ type RequestOptions = {
 /**
  * Thin fetch wrapper around the backend's unified envelope:
  *   { success: boolean, data: T, message: string, error: any }
- * Throws an Error(message) on HTTP errors or `success: false` responses.
+ * Throws an ApiError on HTTP errors or `success: false` responses.
  * A stored JWT is attached as `Authorization: Bearer <token>` automatically.
  */
 async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -244,8 +254,9 @@ async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<
   }
 
   if (!res.ok || !envelope?.success) {
-    throw new Error(
+    throw new ApiError(
       envelope?.message || res.statusText || `Request failed (${res.status})`,
+      res.status,
     );
   }
 

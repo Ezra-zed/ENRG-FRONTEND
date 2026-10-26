@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowRight, Check, ClipboardList, FileText, Loader2, Plus, Send, Sparkles, Users, X } from 'lucide-react';
-import { getGetCompanyMetricsQueryKey, getListCompanyLeadsQueryKey, getVendorProjectTrackingQueryKey, getVendorMaintenanceRequestsQueryKey, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useVendorProjectTracking, useUpdateOrderTracking, useVendorMaintenanceRequests, useUpdateMaintenanceRequest, LeadStatus, type Lead, type CustomerProjectTracking } from '@workspace/api-client-react';
+import { ApiError, getGetCompanyMetricsQueryKey, getListCompanyLeadsQueryKey, getVendorProjectTrackingQueryKey, getVendorMaintenanceRequestsQueryKey, useCreateCompanyProfile, useListCompanyLeads, useUpdateCompanyLead, useGetCompanyMetrics, useVendorProjectTracking, useUpdateOrderTracking, useVendorMaintenanceRequests, useUpdateMaintenanceRequest, LeadStatus, type Lead, type CustomerProjectTracking } from '@workspace/api-client-react';
 import { SelectItem as DropdownItem } from '@/components/ui/select';
 import { Button, Field, EnrgSelect } from '@/components/form-controls';
 import { PageHeader } from '@/components/PageHeader';
@@ -265,7 +265,7 @@ export function CompanyDashboardLegacy() {
           </Link>
         }
       />
-      <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()}>
+      <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()} errorContent={isVerificationPendingError(query.error) ? <CompanyVerificationNotice /> : undefined}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map((metric) => (
             <div key={metric.label} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
@@ -337,7 +337,7 @@ export function CompanyDashboard() {
           </Link>
         }
       />
-      <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()}>
+      <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()} errorContent={isVerificationPendingError(query.error) ? <CompanyVerificationNotice /> : undefined}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map((metric) => (
             <div key={metric.label} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
@@ -455,7 +455,7 @@ export function CompanyLeads() {
   return (
     <CompanyShell>
       <PageHeader eyebrow="Lead desk" title="People are looking for you." description="Respond thoughtfully. Momentum starts with the first useful reply." />
-      <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()} empty={!query.isLoading && !query.error && leads.length === 0} emptyText="Your lead desk is quiet for now.">
+      <QueryState loading={query.isLoading} error={query.error} onRetry={() => query.refetch()} errorContent={isVerificationPendingError(query.error) ? <CompanyVerificationNotice /> : undefined} empty={!query.isLoading && !query.error && leads.length === 0} emptyText="Your lead desk is quiet for now.">
         <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="hidden grid-cols-[1.3fr_1fr_.7fr_.7fr_1fr] gap-4 border-b border-border bg-secondary/60 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground md:grid">
             <span>Customer</span>
@@ -526,5 +526,20 @@ export function CompanyLeads() {
         </div>
       )}
     </CompanyShell>
+  );
+}
+
+function isVerificationPendingError(error: unknown) {
+  return error instanceof ApiError
+    ? error.status === 403 || /verif/i.test(error.message)
+    : error instanceof Error && /verif/i.test(error.message);
+}
+
+function CompanyVerificationNotice() {
+  return (
+    <div role="status" data-testid="notice-company-verification-pending" className="rounded-2xl border border-[#e6d7a8] bg-[#fff9e8] p-6 text-center">
+      <p className="font-semibold text-[#765300]">Your company is not verified yet.</p>
+      <p className="mt-1 text-sm text-[#765300]">Our team will review and verify it soon. Please be patient; you’ll be able to view leads once verification is complete.</p>
+    </div>
   );
 }
