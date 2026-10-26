@@ -323,15 +323,15 @@ export function TermsAndConditions() {
           </p>
           <p>
             <strong className="text-foreground">Platform Operator:</strong>{' '}
-            [Insert ENRG&apos;s full legal entity name]
+            ENRG
           </p>
           <p>
             <strong className="text-foreground">Registered Address:</strong>{' '}
-            [Insert registered business address]
+            Chakataulla, Andharmanik, Bishnupur, South 24 Parganas, West Bengal - 743503, India
           </p>
           <p>
             <strong className="text-foreground">Contact Email:</strong>{' '}
-            [Insert official support email]
+            support@enrg.co.in
           </p>
         </div>
 
@@ -385,11 +385,11 @@ export function PrivacyPolicy() {
         <div className="space-y-2 border-b border-border pb-6">
           <p>
             <strong className="text-foreground">Effective Date:</strong>{' '}
-            [Insert date]
+            22/09/2026
           </p>
           <p>
             <strong className="text-foreground">Last Updated:</strong>{' '}
-            [Insert date]
+            22/09/2026
           </p>
           <p>
             <strong className="text-foreground">Website:</strong>{' '}
