@@ -7,7 +7,6 @@ import { ArrowRight, Loader2, LogIn, Send, ShieldCheck, X } from 'lucide-react';
 import { API_BASE_URL, useSignup, useSignin, SigninInputMethod, SignupInputRole } from '@workspace/api-client-react';
 import { Button, Field } from '@/components/form-controls';
 
-
 export function Signup() {
   const mutation = useSignup();
   const { refresh } = useAuth();
@@ -26,7 +25,11 @@ export function Signup() {
     gstin: '',
     licenseNumber: '',
   });
-  const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+  const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    mutation.reset();
+    setAuthConfirmError(null);
+    setForm((current) => ({ ...current, [key]: e.target.value }));
+  };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const returnTo = new URLSearchParams(location.split('?')[1] || '').get('returnTo');
@@ -102,8 +105,8 @@ export function Signup() {
         </label>
         <div className="sm:col-span-2">
           {mutation.error && (
-            <p data-testid="status-signup-error" className="mb-4 rounded-xl bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
-              We couldn't create that account. Check your details and try again.
+            <p role="alert" data-testid="status-signup-error" className="mb-4 rounded-xl bg-[#fff2ef] p-3 text-sm text-[#8d3f34]">
+              {mutation.error.message || "We couldn't create your account. Please try again."}
             </p>
           )}
           {authConfirmError && (

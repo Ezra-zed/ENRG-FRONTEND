@@ -306,11 +306,11 @@ export function TermsAndConditions() {
         <div className="space-y-2 border-b border-border pb-6">
           <p>
             <strong className="text-foreground">Effective Date:</strong>{' '}
-            [Insert date]
+            22/09/2026
           </p>
           <p>
             <strong className="text-foreground">Last Updated:</strong>{' '}
-            [Insert date]
+            22/09/2026
           </p>
           <p>
             <strong className="text-foreground">Platform:</strong>{' '}
