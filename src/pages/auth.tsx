@@ -247,6 +247,8 @@ export function Signin() {
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const [method, setMethod] = useState<SigninInputMethod>('O-auth');
+  const [acceptPolicies, setAcceptPolicies] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -258,7 +260,11 @@ export function Signin() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (method === 'O-auth') {
-      window.location.assign(`${API_BASE_URL}/auth/google`);
+      if (!acceptPolicies) {
+        setPolicyError('Accept the Terms & Conditions and Privacy Policy to continue.');
+        return;
+      }
+      window.location.assign(`${API_BASE_URL}/auth/google?acceptPolicies=true`);
       return;
     }
     const data =
@@ -311,6 +317,29 @@ export function Signin() {
               </span>
               Sign in with Google
             </button>
+            <label className="mt-3 flex items-start gap-3 text-sm leading-5 text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={acceptPolicies}
+                onChange={(event) => {
+                  setAcceptPolicies(event.target.checked);
+                  setPolicyError(null);
+                }}
+                className="mt-1 size-4 shrink-0 accent-[#1f584d]"
+                data-testid="checkbox-signin-accept-policies"
+              />
+              <span>
+                I agree to ENRG’s{' '}
+                <Link href="/terms-and-conditions" className="font-semibold text-accent underline">Terms &amp; Conditions</Link>
+                {' '}and{' '}
+                <Link href="/privacy-policy" className="font-semibold text-accent underline">Privacy Policy</Link>.
+              </span>
+            </label>
+            {policyError && (
+              <p role="alert" data-testid="status-signin-policy-error" className="mt-2 text-sm text-[#8d3f34]">
+                {policyError}
+              </p>
+            )}
             <button type="button" data-testid="button-signin-email" onClick={() => setMethod('JWT-auth')} className="signin-email-button">
               <span className="signin-mail-icon">
                 <Send size={18} />
